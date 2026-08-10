@@ -6,7 +6,18 @@
   <title>Caribbean Earthquake Tracker</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <meta name="theme-color" content="#131c2f" />
+  <meta name="theme-color" id="theme-color-meta" content="#ffffff" />
+  <script>
+    // Applied before first paint to avoid a flash of the wrong theme.
+    // "auto" (the default) sets nothing here and just follows the OS via
+    // the CSS prefers-color-scheme media query — see style.css.
+    (function () {
+      var stored = localStorage.getItem('theme');
+      if (stored === 'light' || stored === 'dark') {
+        document.documentElement.setAttribute('data-theme', stored);
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -19,6 +30,7 @@
     <div class="topbar-status">
       <span id="status-dot" class="status-dot"></span>
       <span id="last-updated">Loading…</span>
+      <button id="theme-toggle" type="button" class="table-toggle" title="Toggle light/dark theme">Theme: Auto</button>
       <button id="refresh-btn" type="button">Refresh</button>
     </div>
   </header>

@@ -32,6 +32,7 @@ const els = {
   alertsStatus: document.getElementById('alerts-status'),
   alertsThreshold: document.getElementById('alerts-threshold'),
   alertsThresholdLabel: document.getElementById('alerts-threshold-label'),
+  themeToggle: document.getElementById('theme-toggle'),
 };
 
 let refreshTimer = null;
@@ -531,6 +532,41 @@ els.alertsThreshold.addEventListener('change', async () => {
 });
 
 updateAlertsUI();
+
+const THEME_LABELS = { auto: 'Theme: Auto', light: 'Theme: Light', dark: 'Theme: Dark' };
+const THEME_CYCLE = ['auto', 'light', 'dark'];
+
+function currentTheme() {
+  const stored = localStorage.getItem('theme');
+  return stored === 'light' || stored === 'dark' ? stored : 'auto';
+}
+
+function applyTheme(theme) {
+  if (theme === 'auto') {
+    localStorage.removeItem('theme');
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  els.themeToggle.textContent = THEME_LABELS[theme];
+
+  const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('theme-color-meta').setAttribute('content', isDark ? '#131c2f' : '#ffffff');
+}
+
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (currentTheme() === 'auto') applyTheme('auto');
+  });
+}
+
+els.themeToggle.addEventListener('click', () => {
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(currentTheme()) + 1) % THEME_CYCLE.length];
+  applyTheme(next);
+});
+
+applyTheme(currentTheme());
 
 loadEarthquakes();
 scheduleAutoRefresh();

@@ -1,4 +1,52 @@
+/* Light palette (default). Dark overrides live in the media query and
+   [data-theme="dark"] blocks below — see the toggle logic in app.js. */
 :root {
+  --bg: #f4f7fc;
+  --panel: #ffffff;
+  --panel-alt: #eef2f9;
+  --border: #d7e0ef;
+  --text: #101828;
+  --text-dim: #5a6478;
+  --accent: #2a78d6;
+  /* Validated status ramp (good/warning/serious/critical) for magnitude
+     severity — see dataviz skill's palette.md. Fixed across themes: these
+     are always paired with a numeric label, never color alone. */
+  --mag-low: #0ca30c;
+  --mag-mid: #fab219;
+  --mag-high: #ec835a;
+  --mag-severe: #d03b3b;
+  --grid-line: #e1e7f0;
+  --tooltip-bg: #ffffff;
+  --map-bg: #dde5f0;
+  --warning-bg: #fdf3e0;
+  --warning-border: #f0cf8f;
+  --warning-text: #8a5a00;
+  --badge-ink: #05121f;
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1220;
+    --panel: #131c2f;
+    --panel-alt: #1b2740;
+    --border: #263352;
+    --text: #e6ebf5;
+    --text-dim: #97a3bd;
+    --accent: #4fa8ff;
+    --grid-line: #263352;
+    --tooltip-bg: #1b2740;
+    --map-bg: #0e1626;
+    --warning-bg: #3a2a12;
+    --warning-border: #6b4a1c;
+    --warning-text: #f5c542;
+    --badge-ink: #05121f;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
   --bg: #0b1220;
   --panel: #131c2f;
   --panel-alt: #1b2740;
@@ -6,16 +54,14 @@
   --text: #e6ebf5;
   --text-dim: #97a3bd;
   --accent: #4fa8ff;
-  /* Validated status ramp (good/warning/serious/critical) for magnitude
-     severity — see dataviz skill's palette.md. Always paired with a
-     numeric label, never color alone. */
-  --mag-low: #0ca30c;
-  --mag-mid: #fab219;
-  --mag-high: #ec835a;
-  --mag-severe: #d03b3b;
   --grid-line: #263352;
   --tooltip-bg: #1b2740;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --map-bg: #0e1626;
+  --warning-bg: #3a2a12;
+  --warning-border: #6b4a1c;
+  --warning-text: #f5c542;
+  --badge-ink: #05121f;
+  color-scheme: dark;
 }
 
 * {
@@ -79,7 +125,7 @@ body {
 
 #refresh-btn {
   background: var(--accent);
-  color: #05121f;
+  color: var(--badge-ink);
   border: none;
   border-radius: 6px;
   padding: 0.4rem 0.8rem;
@@ -161,7 +207,7 @@ body {
 #map {
   height: 100%;
   min-height: 400px;
-  background: #0e1626;
+  background: var(--map-bg);
 }
 
 .panel {
@@ -175,9 +221,9 @@ body {
 .source-warning {
   margin: 0.75rem;
   padding: 0.6rem 0.8rem;
-  background: #3a2a12;
-  border: 1px solid #6b4a1c;
-  color: #f5c542;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
   border-radius: 6px;
   font-size: 0.78rem;
 }
@@ -211,7 +257,7 @@ body {
   justify-content: center;
   font-weight: 700;
   font-size: 0.85rem;
-  color: #05121f;
+  color: var(--badge-ink);
 }
 
 .quake-info {
@@ -279,6 +325,19 @@ body {
 
 .leaflet-popup-tip {
   background: var(--panel);
+}
+
+/* OpenStreetMap tiles are always light-colored; approximate a dark basemap
+   in dark mode so the map matches the rest of the UI. Only the tile layer
+   is filtered, not markers/popups, which live in a separate Leaflet pane. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .leaflet-tile-pane {
+    filter: brightness(0.6) invert(1) contrast(90%) hue-rotate(200deg);
+  }
+}
+
+:root[data-theme="dark"] .leaflet-tile-pane {
+  filter: brightness(0.6) invert(1) contrast(90%) hue-rotate(200deg);
 }
 
 .trends-panel {
