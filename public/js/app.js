@@ -28,6 +28,10 @@ const els = {
   dailyChart: document.getElementById('daily-chart'),
   magnitudeChart: document.getElementById('magnitude-chart'),
   tooltip: document.getElementById('chart-tooltip'),
+  alertsToggle: document.getElementById('alerts-toggle'),
+  alertsStatus: document.getElementById('alerts-status'),
+  alertsThreshold: document.getElementById('alerts-threshold'),
+  alertsThresholdLabel: document.getElementById('alerts-threshold-label'),
 };
 
 let refreshTimer = null;
@@ -424,6 +428,108 @@ els.tableToggle.addEventListener('click', () => {
   els.trendsCharts.hidden = !showingTable;
   els.tableToggle.textContent = showingTable ? 'View as table' : 'View as charts';
 });
+
+const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+if (pushSupported) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function getExistingSubscription() {
+  if (!pushSupported) return null;
+  const registration = await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+}
+
+async function updateAlertsUI() {
+  if (!pushSupported) {
+    els.alertsToggle.disabled = true;
+    els.alertsStatus.textContent = 'Alerts not supported in this browser';
+    return;
+  }
+  const subscription = await getExistingSubscription();
+  const isOn = Boolean(subscription);
+  els.alertsStatus.textContent = isOn ? 'Alerts on' : 'Alerts off';
+  els.alertsStatus.classList.toggle('on', isOn);
+  els.alertsToggle.textContent = isOn ? 'Disable alerts' : 'Enable alerts';
+  els.alertsThresholdLabel.hidden = !isOn;
+}
+
+async function subscribeWithCurrentThreshold(subscription) {
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subscription,
+      minMagnitude: Number.parseFloat(els.alertsThreshold.value),
+    }),
+  });
+}
+
+async function enableAlerts() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      alert('Notifications were blocked. Enable them in your browser/site settings to get alerts.');
+      return;
+    }
+
+    const keyResponse = await fetch('/api/push/vapid-public-key');
+    if (!keyResponse.ok) {
+      alert('Push notifications are not configured on this server yet.');
+      return;
+    }
+    const { publicKey } = await keyResponse.json();
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+
+    await subscribeWithCurrentThreshold(subscription);
+  } catch (error) {
+    alert(`Could not enable alerts: ${error.message}`);
+  }
+}
+
+async function disableAlerts() {
+  const subscription = await getExistingSubscription();
+  if (subscription) {
+    await fetch('/api/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subscription.endpoint }),
+    });
+    await subscription.unsubscribe();
+  }
+}
+
+els.alertsToggle.addEventListener('click', async () => {
+  els.alertsToggle.disabled = true;
+  const subscription = await getExistingSubscription();
+  if (subscription) {
+    await disableAlerts();
+  } else {
+    await enableAlerts();
+  }
+  await updateAlertsUI();
+  els.alertsToggle.disabled = false;
+});
+
+els.alertsThreshold.addEventListener('change', async () => {
+  const subscription = await getExistingSubscription();
+  if (subscription) await subscribeWithCurrentThreshold(subscription);
+});
+
+updateAlertsUI();
 
 loadEarthquakes();
 scheduleAutoRefresh();

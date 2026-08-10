@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Caribbean Earthquake Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="theme-color" content="#131c2f" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -40,6 +43,20 @@
       Auto-refresh (60s)
     </label>
     <button id="trends-toggle" type="button" class="table-toggle">Show trends</button>
+    <div class="alerts-control">
+      <span id="alerts-status" class="alerts-status">Alerts off</span>
+      <label id="alerts-threshold-label" hidden>
+        Notify me at
+        <select id="alerts-threshold">
+          <option value="3">M3.0+</option>
+          <option value="4">M4.0+</option>
+          <option value="5" selected>M5.0+</option>
+          <option value="6">M6.0+</option>
+          <option value="7">M7.0+</option>
+        </select>
+      </label>
+      <button id="alerts-toggle" type="button" class="table-toggle">Enable alerts</button>
+    </div>
     <div id="counts" class="counts"></div>
   </section>
 

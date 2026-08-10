@@ -40,20 +40,28 @@ To fix/verify it:
 ```
 server/
   index.js              Express app entrypoint, serves /public and /api
-  routes/earthquakes.js  GET /api/earthquakes — orchestrates + caches
+  routes/
+    earthquakes.js       GET /api/earthquakes — orchestrates + caches
+    push.js               Push subscribe/unsubscribe/vapid-key/check endpoints
   lib/
     region.js            Caribbean bounding box
+    aggregate.js          Shared fetch+merge, used by the route and the notifier
     cache.js             In-memory TTL cache (avoids hammering upstream APIs)
     geo.js               Haversine distance for dedup
     merge.js             Cross-source dedup (time + distance + magnitude window)
+    push.js               Web Push subscription storage + sending
+    notifier.js           Detects newly-appeared earthquakes, triggers pushes
     sources/
       usgs.js
       emsc.js
       uwi.js
+  data/                  Push subscriptions (gitignored, created at runtime)
 public/
   index.html             Dashboard shell
   css/style.css
-  js/app.js               Leaflet map, list rendering, filters, auto-refresh
+  js/app.js               Leaflet map, list rendering, filters, auto-refresh, alerts
+  sw.js                   Service worker — shows push notifications
+  manifest.json           PWA manifest (needed for push to work on iOS)
 ```
 
 ### API
@@ -107,6 +115,53 @@ Configuration (optional, via `.env` or environment variables — see
 - `PORT` — server port (default `3000`)
 - `CACHE_TTL_MS` — how long aggregated results are cached before re-fetching
   upstream sources (default `60000`)
+- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` — enable push
+  notifications (see below). Leave unset to disable the feature entirely —
+  the site works fine without it.
+- `CRON_SECRET` — shared secret required to call `POST /api/push/check`
+  (see below).
+
+## Push notifications
+
+Visitors can tap **Enable alerts**, pick a magnitude threshold, and get a
+phone notification when a new earthquake at or above that threshold shows
+up — even with the site closed, as long as their browser is running.
+
+### One-time setup
+
+1. Generate a VAPID keypair: `npx web-push generate-vapid-keys`
+2. Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`
+   (`mailto:you@example.com`) as environment variables — locally in `.env`,
+   and on Render under the service's **Environment** tab.
+3. Generate a random `CRON_SECRET` (e.g. `openssl rand -hex 32`) and set it
+   the same way.
+4. Set up a free external scheduler to hit the check endpoint every few
+   minutes — e.g. [cron-job.org](https://cron-job.org) (free): create a job
+   that sends `POST https://<your-app>.onrender.com/api/push/check` with
+   header `X-Cron-Secret: <your CRON_SECRET>` every 5 minutes.
+
+### Why an external scheduler, not just a timer in the app
+
+The app *does* also poll internally every 5 minutes on its own — but
+Render's free tier suspends the whole process after 15 minutes with no
+incoming HTTP traffic, which stops that timer along with everything else.
+The external scheduler both wakes the app back up and reliably triggers the
+check, regardless of Render's sleep behavior. On a paid Render plan (no
+sleep) the external scheduler is optional but still a good redundancy.
+
+### Two things worth knowing
+
+- **iPhone/iPad**: Apple only allows web push for sites added to the Home
+  Screen (Share → Add to Home Screen), not for Safari tabs directly. This
+  is an iOS platform restriction, not something this app can work around.
+  Android and desktop browsers support it directly, no install needed.
+- **Subscriptions aren't durably stored on Render's free tier**: they're
+  saved to a local file (`server/data/subscriptions.json`), which is wiped
+  on every redeploy and on every free-tier spin-down/spin-up cycle. Anyone
+  subscribed will need to tap "Enable alerts" again after either of those.
+  For durable subscriptions, either move to a Render plan with a
+  [persistent disk](https://render.com/docs/disks), or swap the file
+  storage in `server/lib/push.js` for a small external database.
 
 ## Customizing
 

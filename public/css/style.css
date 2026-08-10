@@ -109,6 +109,10 @@ body {
   color: var(--text-dim);
 }
 
+.controls label[hidden] {
+  display: none;
+}
+
 .controls select {
   background: var(--panel);
   color: var(--text);
@@ -121,6 +125,30 @@ body {
   margin-left: auto;
   color: var(--text-dim);
   font-size: 0.78rem;
+}
+
+.alerts-control {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.alerts-status {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.alerts-status.on {
+  color: var(--mag-low);
+}
+
+#alerts-threshold {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+  margin-left: 0.4rem;
 }
 
 .layout {
