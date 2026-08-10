@@ -327,19 +327,6 @@ body {
   background: var(--panel);
 }
 
-/* OpenStreetMap tiles are always light-colored; approximate a dark basemap
-   in dark mode so the map matches the rest of the UI. Only the tile layer
-   is filtered, not markers/popups, which live in a separate Leaflet pane. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .leaflet-tile-pane {
-    filter: brightness(0.6) invert(1) contrast(90%) hue-rotate(200deg);
-  }
-}
-
-:root[data-theme="dark"] .leaflet-tile-pane {
-  filter: brightness(0.6) invert(1) contrast(90%) hue-rotate(200deg);
-}
-
 .trends-panel {
   border-bottom: 1px solid var(--border);
   background: var(--panel);
