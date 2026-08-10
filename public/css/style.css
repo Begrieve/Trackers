@@ -6,10 +6,15 @@
   --text: #e6ebf5;
   --text-dim: #97a3bd;
   --accent: #4fa8ff;
-  --mag-low: #4fd18b;
-  --mag-mid: #f5c542;
-  --mag-high: #f57c42;
-  --mag-severe: #ef4444;
+  /* Validated status ramp (good/warning/serious/critical) for magnitude
+     severity — see dataviz skill's palette.md. Always paired with a
+     numeric label, never color alone. */
+  --mag-low: #0ca30c;
+  --mag-mid: #fab219;
+  --mag-high: #ec835a;
+  --mag-severe: #d03b3b;
+  --grid-line: #263352;
+  --tooltip-bg: #1b2740;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -248,7 +253,168 @@ body {
   background: var(--panel);
 }
 
+.trends-panel {
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  padding: 0.9rem 1.5rem 1.2rem;
+}
+
+.trends-panel[hidden] {
+  display: none;
+}
+
+.trends-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.trends-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.trends-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.trends-charts[hidden] {
+  display: none;
+}
+
+.chart-block h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 200px;
+  overflow: visible;
+}
+
+.chart-svg text {
+  fill: var(--text-dim);
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.chart-svg .gridline {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+
+.chart-svg .axis-line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-svg .bar-mark,
+.chart-svg .dot-mark {
+  cursor: pointer;
+  transition: opacity 0.1s ease;
+}
+
+.chart-svg .bar-mark:hover,
+.chart-svg .bar-mark:focus,
+.chart-svg .dot-mark:hover,
+.chart-svg .dot-mark:focus {
+  opacity: 0.75;
+  outline: none;
+}
+
+.chart-svg .hit-target {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chart-legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+.chart-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  color: var(--text);
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.chart-tooltip[hidden] {
+  display: none;
+}
+
+.chart-tooltip strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.trends-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.trends-table th,
+.trends-table td {
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.trends-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.table-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.table-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
 @media (max-width: 860px) {
+  .trends-charts {
+    grid-template-columns: 1fr;
+  }
+
+
   .layout {
     grid-template-columns: 1fr;
     grid-template-rows: 55vh 1fr;

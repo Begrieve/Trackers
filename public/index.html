@@ -39,8 +39,42 @@
       <input id="auto-refresh" type="checkbox" checked />
       Auto-refresh (60s)
     </label>
+    <button id="trends-toggle" type="button" class="table-toggle">Show trends</button>
     <div id="counts" class="counts"></div>
   </section>
+
+  <section id="trends-panel" class="trends-panel" hidden>
+    <div class="trends-header">
+      <h2>Trends</h2>
+      <button id="table-toggle" type="button" class="table-toggle">View as table</button>
+    </div>
+    <div id="trends-charts" class="trends-charts">
+      <div class="chart-block">
+        <h3>Earthquakes per day</h3>
+        <svg id="daily-chart" class="chart-svg" role="img" aria-label="Bar chart of earthquake count per day"></svg>
+      </div>
+      <div class="chart-block">
+        <h3>Magnitude over time</h3>
+        <svg id="magnitude-chart" class="chart-svg" role="img" aria-label="Scatter chart of earthquake magnitude over time"></svg>
+      </div>
+    </div>
+    <div id="trends-table-wrap" hidden>
+      <table id="trends-table" class="trends-table">
+        <thead>
+          <tr><th>Date</th><th>Earthquakes</th><th>Max magnitude</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="chart-legend">
+      <span><span class="swatch" style="background:#0ca30c"></span>Minor (&lt; 3)</span>
+      <span><span class="swatch" style="background:#fab219"></span>Light (3 – 4.5)</span>
+      <span><span class="swatch" style="background:#ec835a"></span>Moderate (4.5 – 6)</span>
+      <span><span class="swatch" style="background:#d03b3b"></span>Major (6+)</span>
+    </div>
+  </section>
+
+  <div id="chart-tooltip" class="chart-tooltip" hidden></div>
 
   <main class="layout">
     <div id="map"></div>

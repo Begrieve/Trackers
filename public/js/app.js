@@ -19,16 +19,26 @@ const els = {
   list: document.getElementById('quake-list'),
   emptyState: document.getElementById('empty-state'),
   sourceWarning: document.getElementById('source-warning'),
+  trendsToggle: document.getElementById('trends-toggle'),
+  trendsPanel: document.getElementById('trends-panel'),
+  tableToggle: document.getElementById('table-toggle'),
+  trendsCharts: document.getElementById('trends-charts'),
+  trendsTableWrap: document.getElementById('trends-table-wrap'),
+  trendsTableBody: document.querySelector('#trends-table tbody'),
+  dailyChart: document.getElementById('daily-chart'),
+  magnitudeChart: document.getElementById('magnitude-chart'),
+  tooltip: document.getElementById('chart-tooltip'),
 };
 
 let refreshTimer = null;
+let lastEarthquakes = [];
 
 function magnitudeColor(mag) {
   if (mag == null) return '#8a94ab';
-  if (mag < 3) return '#4fd18b';
-  if (mag < 4.5) return '#f5c542';
-  if (mag < 6) return '#f57c42';
-  return '#ef4444';
+  if (mag < 3) return '#0ca30c';
+  if (mag < 4.5) return '#fab219';
+  if (mag < 6) return '#ec835a';
+  return '#d03b3b';
 }
 
 function magnitudeRadius(mag) {
@@ -115,19 +125,22 @@ function renderEarthquakes(data) {
 
     els.list.appendChild(listItem(quake));
   }
+
+  lastEarthquakes = earthquakes;
+  renderTrends(earthquakes);
 }
 
 function popupHtml(quake) {
   const magText = quake.magnitude != null ? quake.magnitude.toFixed(1) : 'N/A';
   const depthText = quake.depthKm != null ? `${quake.depthKm.toFixed(1)} km` : 'unknown';
   const link = quake.url
-    ? `<br/><a href="${quake.url}" target="_blank" rel="noopener">Event details</a>`
+    ? `<br/><a href="${escapeHtml(quake.url)}" target="_blank" rel="noopener">Event details</a>`
     : '';
   return `
-    <strong>M ${magText} — ${quake.place}</strong><br/>
+    <strong>M ${magText} — ${escapeHtml(quake.place)}</strong><br/>
     ${formatTime(quake.time)}<br/>
     Depth: ${depthText}<br/>
-    Source: ${quake.sources.join(', ')}
+    Source: ${escapeHtml(quake.sources.join(', '))}
     ${link}
   `;
 }
@@ -171,6 +184,218 @@ function listItem(quake) {
   return li;
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatDay(isoString) {
+  return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function dayKey(isoString) {
+  return new Date(isoString).toISOString().slice(0, 10);
+}
+
+function aggregateByDay(earthquakes) {
+  const byDay = new Map();
+  for (const quake of earthquakes) {
+    const key = dayKey(quake.time);
+    if (!byDay.has(key)) byDay.set(key, { date: key, count: 0, maxMag: null });
+    const entry = byDay.get(key);
+    entry.count += 1;
+    if (quake.magnitude != null && (entry.maxMag == null || quake.magnitude > entry.maxMag)) {
+      entry.maxMag = quake.magnitude;
+    }
+  }
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function roundedTopRectPath(x, yTop, w, h, r) {
+  const radius = Math.max(0, Math.min(r, w / 2, h));
+  return `M${x},${yTop + radius} a${radius},${radius} 0 0 1 ${radius},${-radius} h${w - 2 * radius} a${radius},${radius} 0 0 1 ${radius},${radius} v${h - radius} h${-w} Z`;
+}
+
+function showTooltip(clientX, clientY, lines) {
+  els.tooltip.innerHTML = '';
+  for (const [label, value, strong] of lines) {
+    const row = document.createElement('div');
+    const valueSpan = document.createElement(strong ? 'strong' : 'span');
+    valueSpan.textContent = value;
+    if (label) {
+      row.appendChild(document.createTextNode(`${label}: `));
+    }
+    row.appendChild(valueSpan);
+    els.tooltip.appendChild(row);
+  }
+  els.tooltip.style.left = `${clientX + 14}px`;
+  els.tooltip.style.top = `${clientY + 14}px`;
+  els.tooltip.hidden = false;
+}
+
+function hideTooltip() {
+  els.tooltip.hidden = true;
+}
+
+const CHART_W = 600;
+const CHART_H = 200;
+const MARGIN = { top: 10, right: 10, bottom: 24, left: 32 };
+
+function pickLabelIndices(n, maxLabels) {
+  if (n <= maxLabels) return [...Array(n).keys()];
+  const step = Math.ceil(n / maxLabels);
+  const indices = [];
+  for (let i = 0; i < n; i += step) indices.push(i);
+  if (indices[indices.length - 1] !== n - 1) indices.push(n - 1);
+  return indices;
+}
+
+function svgEl(tag, attrs) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  return node;
+}
+
+function renderDailyChart(aggregates) {
+  const svg = els.dailyChart;
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${CHART_W} ${CHART_H}`);
+  if (aggregates.length === 0) return;
+
+  const innerW = CHART_W - MARGIN.left - MARGIN.right;
+  const innerH = CHART_H - MARGIN.top - MARGIN.bottom;
+  const maxCount = Math.max(1, ...aggregates.map((a) => a.count));
+  const bandWidth = innerW / aggregates.length;
+  const barWidth = Math.min(24, bandWidth - 2);
+
+  [0, 0.5, 1].forEach((frac) => {
+    const y = MARGIN.top + innerH * (1 - frac);
+    svg.appendChild(svgEl('line', { class: 'gridline', x1: MARGIN.left, x2: CHART_W - MARGIN.right, y1: y, y2: y }));
+    const label = svgEl('text', { x: MARGIN.left - 6, y: y + 3, 'text-anchor': 'end' });
+    label.textContent = Math.round(maxCount * frac);
+    svg.appendChild(label);
+  });
+
+  const labelIndices = new Set(pickLabelIndices(aggregates.length, 8));
+
+  aggregates.forEach((entry, i) => {
+    const barHeight = Math.max(1, innerH * (entry.count / maxCount));
+    const x = MARGIN.left + i * bandWidth + (bandWidth - barWidth) / 2;
+    const yTop = MARGIN.top + innerH - barHeight;
+    const color = entry.maxMag != null ? magnitudeColor(entry.maxMag) : '#8a94ab';
+
+    const bar = svgEl('path', { class: 'bar-mark', d: roundedTopRectPath(x, yTop, barWidth, barHeight, 4), fill: color, tabindex: '0' });
+    bar.addEventListener('pointermove', (e) => {
+      showTooltip(e.clientX, e.clientY, [
+        ['Date', formatDay(entry.date), false],
+        ['Earthquakes', String(entry.count), true],
+        ['Max magnitude', entry.maxMag != null ? entry.maxMag.toFixed(1) : 'N/A', false],
+      ]);
+    });
+    bar.addEventListener('pointerleave', hideTooltip);
+    bar.addEventListener('focus', (e) => {
+      const rect = bar.getBoundingClientRect();
+      showTooltip(rect.left, rect.top, [
+        ['Date', formatDay(entry.date), false],
+        ['Earthquakes', String(entry.count), true],
+      ]);
+    });
+    bar.addEventListener('blur', hideTooltip);
+    svg.appendChild(bar);
+
+    if (labelIndices.has(i)) {
+      const label = svgEl('text', { x: x + barWidth / 2, y: CHART_H - MARGIN.bottom + 14, 'text-anchor': 'middle' });
+      label.textContent = formatDay(entry.date);
+      svg.appendChild(label);
+    }
+  });
+
+  svg.appendChild(svgEl('line', { class: 'axis-line', x1: MARGIN.left, x2: CHART_W - MARGIN.right, y1: MARGIN.top + innerH, y2: MARGIN.top + innerH }));
+}
+
+function renderMagnitudeChart(earthquakes) {
+  const svg = els.magnitudeChart;
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${CHART_W} ${CHART_H}`);
+
+  const dated = earthquakes.filter((q) => q.magnitude != null).slice().sort((a, b) => new Date(a.time) - new Date(b.time));
+  if (dated.length === 0) return;
+
+  const innerW = CHART_W - MARGIN.left - MARGIN.right;
+  const innerH = CHART_H - MARGIN.top - MARGIN.bottom;
+  const times = dated.map((q) => new Date(q.time).getTime());
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times, minTime + 1);
+  const maxMag = Math.max(5, ...dated.map((q) => q.magnitude));
+
+  [0, 0.5, 1].forEach((frac) => {
+    const y = MARGIN.top + innerH * (1 - frac);
+    svg.appendChild(svgEl('line', { class: 'gridline', x1: MARGIN.left, x2: CHART_W - MARGIN.right, y1: y, y2: y }));
+    const label = svgEl('text', { x: MARGIN.left - 6, y: y + 3, 'text-anchor': 'end' });
+    label.textContent = (maxMag * frac).toFixed(1);
+    svg.appendChild(label);
+  });
+
+  const labelIndices = new Set(pickLabelIndices(dated.length, 4));
+
+  dated.forEach((quake, i) => {
+    const x = MARGIN.left + (innerW * (new Date(quake.time).getTime() - minTime)) / (maxTime - minTime);
+    const y = MARGIN.top + innerH * (1 - quake.magnitude / maxMag);
+    const color = magnitudeColor(quake.magnitude);
+
+    const dot = svgEl('circle', { class: 'dot-mark', cx: x, cy: y, r: 5, fill: color, stroke: 'var(--panel)', 'stroke-width': 2 });
+    svg.appendChild(dot);
+
+    const hit = svgEl('circle', { class: 'hit-target', cx: x, cy: y, r: 12, tabindex: '0' });
+    const tooltipLines = [
+      ['Place', quake.place, false],
+      ['Magnitude', quake.magnitude.toFixed(1), true],
+      ['Date', formatTime(quake.time), false],
+    ];
+    hit.addEventListener('pointermove', (e) => showTooltip(e.clientX, e.clientY, tooltipLines));
+    hit.addEventListener('pointerleave', hideTooltip);
+    hit.addEventListener('focus', () => {
+      const rect = hit.getBoundingClientRect();
+      showTooltip(rect.left, rect.top, tooltipLines);
+    });
+    hit.addEventListener('blur', hideTooltip);
+    svg.appendChild(hit);
+
+    if (labelIndices.has(i)) {
+      const label = svgEl('text', { x, y: CHART_H - MARGIN.bottom + 14, 'text-anchor': 'middle' });
+      label.textContent = formatDay(quake.time);
+      svg.appendChild(label);
+    }
+  });
+
+  svg.appendChild(svgEl('line', { class: 'axis-line', x1: MARGIN.left, x2: CHART_W - MARGIN.right, y1: MARGIN.top + innerH, y2: MARGIN.top + innerH }));
+}
+
+function renderTrendsTable(aggregates) {
+  els.trendsTableBody.innerHTML = '';
+  for (const entry of aggregates.slice().reverse()) {
+    const row = document.createElement('tr');
+    const cells = [formatDay(entry.date), String(entry.count), entry.maxMag != null ? entry.maxMag.toFixed(1) : 'N/A'];
+    for (const value of cells) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.appendChild(cell);
+    }
+    els.trendsTableBody.appendChild(row);
+  }
+}
+
+function renderTrends(earthquakes) {
+  const aggregates = aggregateByDay(earthquakes);
+  renderDailyChart(aggregates);
+  renderMagnitudeChart(earthquakes);
+  renderTrendsTable(aggregates);
+}
+
 function scheduleAutoRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
   if (els.autoRefresh.checked) {
@@ -185,6 +410,20 @@ els.magFilter.addEventListener('input', () => {
 els.magFilter.addEventListener('change', loadEarthquakes);
 els.daysFilter.addEventListener('change', loadEarthquakes);
 els.autoRefresh.addEventListener('change', scheduleAutoRefresh);
+
+els.trendsToggle.addEventListener('click', () => {
+  const nowHidden = !els.trendsPanel.hidden;
+  els.trendsPanel.hidden = nowHidden;
+  els.trendsToggle.textContent = nowHidden ? 'Show trends' : 'Hide trends';
+  if (!nowHidden) renderTrends(lastEarthquakes);
+});
+
+els.tableToggle.addEventListener('click', () => {
+  const showingTable = !els.trendsTableWrap.hidden;
+  els.trendsTableWrap.hidden = showingTable;
+  els.trendsCharts.hidden = !showingTable;
+  els.tableToggle.textContent = showingTable ? 'View as table' : 'View as charts';
+});
 
 loadEarthquakes();
 scheduleAutoRefresh();
