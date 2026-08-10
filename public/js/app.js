@@ -14,7 +14,7 @@ const els = {
   magFilter: document.getElementById('mag-filter'),
   magValue: document.getElementById('mag-value'),
   daysFilter: document.getElementById('days-filter'),
-  autoRefresh: document.getElementById('auto-refresh'),
+  refreshInterval: document.getElementById('refresh-interval'),
   counts: document.getElementById('counts'),
   list: document.getElementById('quake-list'),
   emptyState: document.getElementById('empty-state'),
@@ -402,8 +402,9 @@ function renderTrends(earthquakes) {
 
 function scheduleAutoRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
-  if (els.autoRefresh.checked) {
-    refreshTimer = setInterval(loadEarthquakes, 60_000);
+  const intervalMs = Number.parseInt(els.refreshInterval.value, 10);
+  if (intervalMs > 0) {
+    refreshTimer = setInterval(loadEarthquakes, intervalMs);
   }
 }
 
@@ -413,7 +414,7 @@ els.magFilter.addEventListener('input', () => {
 });
 els.magFilter.addEventListener('change', loadEarthquakes);
 els.daysFilter.addEventListener('change', loadEarthquakes);
-els.autoRefresh.addEventListener('change', scheduleAutoRefresh);
+els.refreshInterval.addEventListener('change', scheduleAutoRefresh);
 
 els.trendsToggle.addEventListener('click', () => {
   const nowHidden = !els.trendsPanel.hidden;
