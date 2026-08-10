@@ -1,7 +1,8 @@
 # Caribbean Earthquake Tracker
 
 A real-time dashboard for earthquake and seismic activity across the
-Caribbean basin. An Express backend aggregates multiple public seismic data
+Caribbean region (including Colombia and coastal Ecuador, whose seismic
+activity directly affects the wider Caribbean). An Express backend aggregates multiple public seismic data
 sources, deduplicates events reported by more than one network, and serves
 them to a Leaflet map + list frontend that auto-refreshes.
 
