@@ -1,0 +1,265 @@
+:root {
+  --bg: #0b1220;
+  --panel: #131c2f;
+  --panel-alt: #1b2740;
+  --border: #263352;
+  --text: #e6ebf5;
+  --text-dim: #97a3bd;
+  --accent: #4fa8ff;
+  --mag-low: #4fd18b;
+  --mag-mid: #f5c542;
+  --mag-high: #f57c42;
+  --mag-severe: #ef4444;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-title h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.subtitle {
+  margin: 0.15rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--mag-mid);
+  display: inline-block;
+}
+
+.status-dot.ok {
+  background: var(--mag-low);
+}
+
+.status-dot.error {
+  background: var(--mag-severe);
+}
+
+#refresh-btn {
+  background: var(--accent);
+  color: #05121f;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#refresh-btn:hover {
+  filter: brightness(1.1);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-dim);
+}
+
+.controls select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+}
+
+.counts {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  min-height: 0;
+}
+
+#map {
+  height: 100%;
+  min-height: 400px;
+  background: #0e1626;
+}
+
+.panel {
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.source-warning {
+  margin: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #3a2a12;
+  border: 1px solid #6b4a1c;
+  color: #f5c542;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+.quake-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+  flex: 1;
+}
+
+.quake-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.65rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.quake-item:hover {
+  background: var(--panel-alt);
+}
+
+.mag-badge {
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #05121f;
+}
+
+.quake-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.quake-place {
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quake-meta {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.source-tag {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  font-size: 0.68rem;
+}
+
+.empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.footer {
+  padding: 0.75rem 1.5rem;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.footer p {
+  margin: 0.2rem 0;
+}
+
+.footer a {
+  color: var(--accent);
+}
+
+.disclaimer {
+  font-style: italic;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.leaflet-popup-tip {
+  background: var(--panel);
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 55vh 1fr;
+  }
+
+  .panel {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .counts {
+    margin-left: 0;
+  }
+}

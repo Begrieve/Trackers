@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caribbean Earthquake Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>Caribbean Earthquake Tracker</h1>
+      <p class="subtitle">Real-time seismic activity across the Caribbean basin</p>
+    </div>
+    <div class="topbar-status">
+      <span id="status-dot" class="status-dot"></span>
+      <span id="last-updated">Loading…</span>
+      <button id="refresh-btn" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <section class="controls">
+    <label>
+      Min magnitude
+      <input id="mag-filter" type="range" min="0" max="7" step="0.5" value="2" />
+      <output id="mag-value">2.0</output>
+    </label>
+    <label>
+      Time range
+      <select id="days-filter">
+        <option value="1">Last 24 hours</option>
+        <option value="7" selected>Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </label>
+    <label class="auto-refresh">
+      <input id="auto-refresh" type="checkbox" checked />
+      Auto-refresh (60s)
+    </label>
+    <div id="counts" class="counts"></div>
+  </section>
+
+  <main class="layout">
+    <div id="map"></div>
+
+    <aside class="panel">
+      <div id="source-warning" class="source-warning" hidden></div>
+      <ul id="quake-list" class="quake-list"></ul>
+      <p id="empty-state" class="empty-state" hidden>No earthquakes matched the current filters.</p>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Data: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noopener">USGS Earthquake Hazards Program</a>
+      &middot;
+      <a href="https://www.emsc-csem.org/" target="_blank" rel="noopener">EMSC</a>
+      &middot;
+      <a href="https://uwiseismic.com/" target="_blank" rel="noopener">UWI Seismic Research Centre</a>
+      (Eastern Caribbean authority — see their
+      <a href="https://map.uwiseismic.com/" target="_blank" rel="noopener">official live map</a>).
+    </p>
+    <p class="disclaimer">
+      Aggregated for situational awareness only — not an official alerting system.
+      In an emergency, follow guidance from your national disaster management agency.
+    </p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
