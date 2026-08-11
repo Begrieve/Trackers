@@ -50,7 +50,7 @@ export async function fetchEmscEarthquakes({ days, minMagnitude }) {
         lon,
         place: props.flynn_region ?? 'Unknown location',
         url: props.unid
-          ? `https://www.seismicportal.eu/eventid/${props.unid}`
+          ? `https://www.seismicportal.eu/eventdetails.html?unid=${encodeURIComponent(props.unid)}`
           : null,
         tsunami: false,
         felt: null,
