@@ -1,5 +1,3 @@
-import { CARIBBEAN_BBOX } from '../region.js';
-
 // EMSC (European-Mediterranean Seismological Centre) FDSNWS event service.
 // Public, no auth. Used as a cross-check against USGS since the two
 // networks process the same raw seismic data independently.
@@ -14,12 +12,8 @@ export async function fetchEmscEarthquakes({ days, minMagnitude }) {
   url.searchParams.set('format', 'json');
   url.searchParams.set('start', starttime.toISOString());
   url.searchParams.set('end', endtime.toISOString());
-  url.searchParams.set('minlat', String(CARIBBEAN_BBOX.minLatitude));
-  url.searchParams.set('maxlat', String(CARIBBEAN_BBOX.maxLatitude));
-  url.searchParams.set('minlon', String(CARIBBEAN_BBOX.minLongitude));
-  url.searchParams.set('maxlon', String(CARIBBEAN_BBOX.maxLongitude));
   url.searchParams.set('minmag', String(minMagnitude));
-  url.searchParams.set('limit', '500');
+  url.searchParams.set('limit', '1000');
 
   const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!response.ok) {

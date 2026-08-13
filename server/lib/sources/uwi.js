@@ -2,7 +2,9 @@ import * as cheerio from 'cheerio';
 
 // The UWI Seismic Research Centre (UWI-SRC) is the authoritative agency for
 // earthquake and volcano monitoring in the English-speaking Eastern
-// Caribbean. As of this writing they do NOT publish a documented public
+// Caribbean — one region among the many this app now covers worldwide via
+// USGS/EMSC, but still a valuable supplementary source for that region
+// specifically. As of this writing they do NOT publish a documented public
 // JSON/REST API for recent earthquakes — only an RSS feed for their news
 // section, and an interactive map app at https://map.uwiseismic.com.
 //
@@ -29,7 +31,7 @@ export async function fetchUwiEarthquakes() {
     const response = await fetch(UWI_MONITORING_URL, {
       signal: AbortSignal.timeout(10000),
       headers: {
-        'User-Agent': 'CaribbeanEarthquakeTracker/1.0 (+https://uwiseismic.com)',
+        'User-Agent': 'WorldQuakeWatch/1.0 (+https://uwiseismic.com)',
       },
     });
     if (!response.ok) {

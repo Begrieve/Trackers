@@ -1,4 +1,4 @@
-const map = L.map('map', { worldCopyJump: true }).setView([15.5, -74], 5);
+const map = L.map('map', { worldCopyJump: true }).setView([20, 0], 2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors',

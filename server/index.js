@@ -18,7 +18,7 @@ app.use('/api', pushRouter);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
-  console.log(`Caribbean Earthquake Tracker running at http://localhost:${PORT}`);
+  console.log(`World Quake Watch running at http://localhost:${PORT}`);
   if (pushConfigured) {
     // Best-effort in-process fallback. On platforms that suspend the
     // process when idle (e.g. Render's free tier), this stops running

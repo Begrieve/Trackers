@@ -1,18 +1,17 @@
-# Caribbean Earthquake Tracker
+# World Quake Watch
 
-A real-time dashboard for earthquake and seismic activity across the
-Caribbean region (including Colombia and coastal Ecuador, whose seismic
-activity directly affects the wider Caribbean). An Express backend aggregates multiple public seismic data
-sources, deduplicates events reported by more than one network, and serves
-them to a Leaflet map + list frontend that auto-refreshes.
+A real-time worldwide dashboard for earthquake and seismic activity. An
+Express backend aggregates multiple public seismic data sources,
+deduplicates events reported by more than one network, and serves them to a
+Leaflet map + list frontend that auto-refreshes.
 
 ## Data sources
 
 | Source | Coverage | Access method |
 | --- | --- | --- |
-| [USGS Earthquake Hazards Program](https://earthquake.usgs.gov/) | Global, including full Caribbean | Public FDSNWS GeoJSON API (no auth, CORS-enabled) |
+| [USGS Earthquake Hazards Program](https://earthquake.usgs.gov/) | Global | Public FDSNWS GeoJSON API (no auth, CORS-enabled) |
 | [EMSC](https://www.emsc-csem.org/) (seismicportal.eu) | Global, independent detection network — good cross-check against USGS | Public FDSNWS JSON API (no auth) |
-| [UWI Seismic Research Centre](https://uwiseismic.com/) | Authoritative for the Eastern Caribbean (Lesser Antilles, Trinidad & Tobago) | **Best-effort HTML scrape** — see caveat below |
+| [UWI Seismic Research Centre](https://uwiseismic.com/) | Supplementary — authoritative specifically for the Eastern Caribbean (Lesser Antilles, Trinidad & Tobago) | **Best-effort HTML scrape** — see caveat below |
 
 ### Important caveat about UWI-SRC
 
@@ -44,7 +43,6 @@ server/
     earthquakes.js       GET /api/earthquakes — orchestrates + caches
     push.js               Push subscribe/unsubscribe/vapid-key/check endpoints
   lib/
-    region.js            Caribbean bounding box
     aggregate.js          Shared fetch+merge, used by the route and the notifier
     cache.js             In-memory TTL cache (avoids hammering upstream APIs)
     geo.js               Haversine distance for dedup
@@ -71,7 +69,7 @@ public/
 ```json
 {
   "generatedAt": "2026-08-10T12:00:00.000Z",
-  "region": "Caribbean",
+  "region": "Worldwide",
   "filters": { "days": 7, "minMagnitude": 2 },
   "counts": { "usgs": 42, "emsc": 40, "uwi": 0, "merged": 45 },
   "sourceErrors": [],
@@ -165,15 +163,21 @@ sleep) the external scheduler is optional but still a good redundancy.
 
 ## Customizing
 
-- **Region**: adjust the bounding box in `server/lib/region.js`.
+- **Restrict to a region**: the app queries USGS/EMSC worldwide by default.
+  To scope it back down, add `minlatitude`/`maxlatitude`/`minlongitude`/
+  `maxlongitude` params in `server/lib/sources/usgs.js` and
+  `minlat`/`maxlat`/`minlon`/`maxlon` in `server/lib/sources/emsc.js`.
 - **Dedup sensitivity**: tune `TIME_WINDOW_MS`, `DISTANCE_WINDOW_KM`, and
   `MAGNITUDE_WINDOW` in `server/lib/merge.js`.
 - **Default filters**: change the defaults in `public/index.html`'s
-  `#mag-filter`/`#days-filter` and in `server/routes/earthquakes.js`.
+  `#mag-filter`/`#days-filter` and in `server/routes/earthquakes.js`. The
+  magnitude default is set higher than a regional tracker would use (M4.0+)
+  since a worldwide feed at low magnitudes returns a lot of events.
 
 ## Disclaimer
 
 This tool aggregates public seismic data for situational awareness. It is
 not an official earthquake or tsunami alerting system. In an emergency,
-follow guidance from your national disaster management agency (e.g. ODPM,
-NEMO, CDEMA) or UWI-SRC directly.
+follow guidance from your national or local disaster management agency
+(for the Eastern Caribbean specifically: ODPM, NEMO, CDEMA, or UWI-SRC
+directly).

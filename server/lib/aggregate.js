@@ -23,7 +23,7 @@ export async function fetchAggregatedEarthquakes({ days, minMagnitude }) {
 
   return {
     generatedAt: new Date().toISOString(),
-    region: 'Caribbean',
+    region: 'Worldwide',
     filters: { days, minMagnitude },
     counts: { usgs: usgs.length, emsc: emsc.length, uwi: uwi.length, merged: earthquakes.length },
     sourceErrors,

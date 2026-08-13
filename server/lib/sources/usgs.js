@@ -1,5 +1,3 @@
-import { CARIBBEAN_BBOX } from '../region.js';
-
 // USGS FDSNWS Event API: public, no auth, CORS-enabled, updated continuously.
 // https://earthquake.usgs.gov/fdsnws/event/1/
 const USGS_ENDPOINT = 'https://earthquake.usgs.gov/fdsnws/event/1/query';
@@ -12,13 +10,9 @@ export async function fetchUsgsEarthquakes({ days, minMagnitude }) {
   url.searchParams.set('format', 'geojson');
   url.searchParams.set('starttime', starttime.toISOString());
   url.searchParams.set('endtime', endtime.toISOString());
-  url.searchParams.set('minlatitude', String(CARIBBEAN_BBOX.minLatitude));
-  url.searchParams.set('maxlatitude', String(CARIBBEAN_BBOX.maxLatitude));
-  url.searchParams.set('minlongitude', String(CARIBBEAN_BBOX.minLongitude));
-  url.searchParams.set('maxlongitude', String(CARIBBEAN_BBOX.maxLongitude));
   url.searchParams.set('minmagnitude', String(minMagnitude));
   url.searchParams.set('orderby', 'time');
-  url.searchParams.set('limit', '500');
+  url.searchParams.set('limit', '1000');
 
   const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!response.ok) {

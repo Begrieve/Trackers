@@ -1,10 +1,10 @@
 {
-  "name": "Caribbean Earthquake Tracker",
-  "short_name": "Quake Tracker",
+  "name": "World Quake Watch",
+  "short_name": "Quake Watch",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0b1220",
-  "theme_color": "#131c2f",
+  "background_color": "#f4f7fc",
+  "theme_color": "#ffffff",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
