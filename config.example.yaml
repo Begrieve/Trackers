@@ -1,0 +1,19 @@
+# Copy to config.yaml and fill in your PBX/extension details.
+
+sip_domain: pbx.example.com      # SIP server / PBX hostname or IP
+sip_user: "1001"                 # Extension / account username
+sip_password: "changeme"         # Extension / account password
+
+registrar_uri: sip:pbx.example.com   # Usually sip:<sip_domain>; override if different
+proxy_uri: null                      # Outbound proxy, if your PBX requires one
+
+local_port: 5060
+transport: udp                   # udp | tcp | tls
+
+recordings_dir: recordings       # Where WAV/MP3 files are written
+mp3_bitrate: 128k
+keep_wav: false                  # Keep the intermediate WAV after MP3 conversion
+auto_answer: true                # Auto-answer incoming calls so they get recorded
+record_local_audio: false        # Also mix in this endpoint's own mic/outgoing audio
+
+log_level: INFO

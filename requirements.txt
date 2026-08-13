@@ -1,0 +1,6 @@
+PyYAML>=6.0
+
+# pjsua2 (PJSIP's Python SIP stack bindings) is not published on PyPI in a way
+# that works on every platform. Build it from source per README.md, or install
+# a prebuilt wheel for your platform if one is available, e.g.:
+#   pip install pjsua2
