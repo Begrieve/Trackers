@@ -26,7 +26,13 @@ export async function GET(request: Request) {
 
   const [orders, batches] = await Promise.all([
     getOrders(),
-    prisma.batch.findMany({ select: { madeOn: true, items: { select: { quantity: true } } } }),
+    prisma.batch.findMany({
+      select: {
+        madeOn: true,
+        items: { select: { productId: true, quantity: true } },
+        costs: { select: { amount: true } },
+      },
+    }),
   ]);
 
   const report = buildReport(orders, batches, range);
@@ -46,9 +52,14 @@ export async function GET(request: Request) {
     ["Still owed", money(report.outstanding)],
     ["Jars made", report.jarsMade],
     ["Batches", report.batchCount],
+    ["Batch spend", money(report.batchSpend)],
+    ["Cost of jars sold", money(report.cogs)],
+    ["Gross profit", money(report.profit)],
+    ["Margin %", report.marginPct === null ? "" : report.marginPct],
+    ["Jars sold with no recorded cost", report.uncostedJars],
     [],
-    ["By product", "Jars", "Value"],
-    ...report.products.map((p) => [p.name, p.quantity, money(p.revenue)]),
+    ["By product", "Jars", "Value", "Cost", "Profit"],
+    ...report.products.map((p) => [p.name, p.quantity, money(p.revenue), money(p.cost), money(p.profit)]),
     [],
     ["By person", "Orders", "Jars", "Billed", "Paid", "Owed"],
     ...report.people.map((p) => [p.name, p.orders, p.jars, money(p.billed), money(p.paid), money(p.owed)]),

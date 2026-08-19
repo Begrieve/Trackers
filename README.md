@@ -34,6 +34,29 @@ Set against your orders, it answers the question a ledger alone can't:
 
 Cancelled orders release their claim on stock.
 
+### Cost and profit
+
+A batch can also record what it cost to make — ingredients, jars, whatever you want
+to itemise. From that:
+
+- Within a batch, cost is split **evenly across the jars it produced**. A $50 cook
+  yielding 20 jars puts $2.50 behind each. That's arithmetic you can check in your
+  head, which matters more than false precision — record sizes as separate batches
+  when the difference between a 32 oz and a 16 oz jar is worth accounting for.
+- Across batches, a product's cost per jar is the **weighted average of every jar
+  ever made**, so a cheaper cook moves the average in proportion to its size, not
+  merely because it came later.
+- Reports then show **cost of jars sold**, **gross profit**, and **margin**, priced
+  from every batch ever recorded — a jar sold today may well have been cooked last
+  month.
+
+**Batch spend** (cash out on cooking in the period) is reported separately from
+**cost of jars sold** (what the jars you actually sold cost to make). They answer
+different questions and rarely match in any given month.
+
+If jars are sold for a product with no batch cost behind it, the report says so and
+names the count, rather than quietly reporting those jars as pure profit.
+
 ## Reports
 
 **Reports** covers any date period — this month, last month, last 90 days, this year,

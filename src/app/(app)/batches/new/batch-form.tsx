@@ -5,9 +5,17 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { createBatch } from "@/actions/batches";
 import type { ActionState } from "@/actions/customers";
-import { toDateInputValue } from "@/lib/money";
+import { formatMoney, toDateInputValue } from "@/lib/money";
 
 type Product = { id: string; name: string; unitLabel: string };
+
+const COST_ROWS = ["Ingredients", "Jars & packaging", "Other"];
+
+function toCents(value: string) {
+  const cleaned = value.replace(/[$,\s]/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -21,11 +29,15 @@ function Submit() {
 export function BatchForm({ products }: { products: Product[] }) {
   const [state, formAction] = useActionState<ActionState, FormData>(createBatch, {});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [costs, setCosts] = useState<string[]>(() => COST_ROWS.map(() => ""));
 
   const totalJars = useMemo(
     () => Object.values(quantities).reduce((sum, n) => sum + (n || 0), 0),
     [quantities],
   );
+
+  const totalCost = useMemo(() => costs.reduce((sum, c) => sum + toCents(c), 0), [costs]);
+  const perJar = totalJars > 0 ? Math.round(totalCost / totalJars) : 0;
 
   function setQty(id: string, value: number) {
     setQuantities((q) => ({ ...q, [id]: Math.max(0, value) }));
@@ -99,6 +111,48 @@ export function BatchForm({ products }: { products: Product[] }) {
           <span className="text-sm font-semibold text-fg-muted">Jars in this batch</span>
           <span className="text-xl font-bold tabular-nums text-fg">{totalJars}</span>
         </div>
+      </section>
+
+      <section className="card p-4">
+        <h2 className="mb-1 font-bold text-fg">What did it cost to make?</h2>
+        <p className="mb-3 text-sm text-fg-muted">
+          Optional, but it&apos;s what turns Reports into profit rather than takings.
+        </p>
+
+        <ul className="space-y-2">
+          {COST_ROWS.map((placeholder, index) => (
+            <li key={placeholder} className="flex gap-2">
+              <input
+                name="costLabel"
+                defaultValue={placeholder}
+                aria-label={`Cost ${index + 1} description`}
+                className="field min-w-0 flex-1"
+              />
+              <input
+                name="costAmount"
+                inputMode="decimal"
+                placeholder="0.00"
+                aria-label={`Cost ${index + 1} amount`}
+                value={costs[index]}
+                onChange={(e) =>
+                  setCosts((prev) => prev.map((c, i) => (i === index ? e.target.value : c)))
+                }
+                className="field w-28"
+              />
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+          <span className="text-sm font-semibold text-fg-muted">Batch cost</span>
+          <span className="text-xl font-bold tabular-nums text-fg">{formatMoney(totalCost)}</span>
+        </div>
+
+        {totalCost > 0 && totalJars > 0 ? (
+          <p className="mt-1 text-right text-sm text-fg-muted">
+            {formatMoney(perJar)} per jar across {totalJars} {totalJars === 1 ? "jar" : "jars"}
+          </p>
+        ) : null}
       </section>
 
       <section className="card space-y-4 p-4">

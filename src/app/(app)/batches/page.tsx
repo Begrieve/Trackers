@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { stockByProduct } from "@/lib/stock";
-import { formatDate } from "@/lib/money";
+import { formatDate, formatMoney } from "@/lib/money";
+import { batchJars, batchTotalCost, unitCosts } from "@/lib/costing";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { deleteBatch } from "@/actions/batches";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function BatchesPage() {
   const [batches, batchItems, orderItems] = await Promise.all([
     prisma.batch.findMany({
-      include: { items: { orderBy: { name: "asc" } } },
+      include: { items: { orderBy: { name: "asc" } }, costs: true },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
     prisma.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
@@ -28,6 +29,14 @@ export default async function BatchesPage() {
       status: i.order.status,
     })),
   );
+
+  const costPerJar = unitCosts(
+    batches.map((b) => ({
+      items: b.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      costs: b.costs,
+    })),
+  );
+  const totalSpend = batches.reduce((sum, b) => sum + batchTotalCost(b), 0);
 
   const totalMade = stock.reduce((sum, r) => sum + r.made, 0);
   const totalSpare = stock.reduce((sum, r) => sum + r.spare, 0);
@@ -47,7 +56,11 @@ export default async function BatchesPage() {
       </div>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Jars made" value={String(totalMade)} hint="Across every batch" />
+        <StatCard
+          label="Jars made"
+          value={String(totalMade)}
+          hint={totalSpend > 0 ? `${formatMoney(totalSpend)} spent making them` : "Across every batch"}
+        />
         <StatCard
           label="Promised"
           value={String(totalCommitted)}
@@ -76,6 +89,11 @@ export default async function BatchesPage() {
                   <p className="mt-0.5 text-sm text-fg-muted">
                     {row.made} made · {row.delivered} delivered · {row.committed} promised
                   </p>
+                  {(costPerJar.get(row.productId)?.perJar ?? 0) > 0 ? (
+                    <p className="mt-0.5 text-sm text-fg-subtle">
+                      {formatMoney(costPerJar.get(row.productId)!.perJar)} per jar to make
+                    </p>
+                  ) : null}
                 </div>
                 <div className="shrink-0 text-right">
                   {row.short > 0 ? (
@@ -103,7 +121,7 @@ export default async function BatchesPage() {
         ) : (
           <div className="space-y-3">
             {batches.map((batch) => {
-              const jars = batch.items.reduce((sum, i) => sum + i.quantity, 0);
+              const jars = batchJars(batch);
               return (
                 <div key={batch.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -114,9 +132,17 @@ export default async function BatchesPage() {
                         {batch.readyOn ? ` · ready ${formatDate(batch.readyOn)}` : ""}
                       </p>
                     </div>
-                    <p className="shrink-0 font-bold tabular-nums text-fg">
-                      {jars} {jars === 1 ? "jar" : "jars"}
-                    </p>
+                    <div className="shrink-0 text-right">
+                      <p className="font-bold tabular-nums text-fg">
+                        {jars} {jars === 1 ? "jar" : "jars"}
+                      </p>
+                      {batchTotalCost(batch) > 0 ? (
+                        <p className="text-sm tabular-nums text-fg-muted">
+                          {formatMoney(batchTotalCost(batch))}
+                          {jars > 0 ? ` · ${formatMoney(Math.round(batchTotalCost(batch) / jars))}/jar` : ""}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
 
                   <ul className="mt-3 flex flex-wrap gap-2">
@@ -126,6 +152,16 @@ export default async function BatchesPage() {
                       </li>
                     ))}
                   </ul>
+
+                  {batch.costs.length > 0 ? (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {batch.costs.map((cost) => (
+                        <li key={cost.id} className="text-xs text-fg-subtle">
+                          {cost.label} {formatMoney(cost.amount)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
 
                   {batch.notes ? (
                     <p className="mt-3 text-sm text-fg-muted">{batch.notes}</p>
