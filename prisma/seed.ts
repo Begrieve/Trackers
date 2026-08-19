@@ -28,10 +28,17 @@ async function main() {
   );
 
   if (!owner && !partner) {
+    const existing = await prisma.user.count();
     console.log(
-      "No SEED_* credentials found in the environment — skipping account creation.\n" +
-        "Set SEED_OWNER_EMAIL / SEED_OWNER_PASSWORD (and the SEED_PARTNER_* pair) and re-run.",
+      "No SEED_* credentials found in the environment — skipping account setup.\n" +
+        `There ${existing === 1 ? "is" : "are"} currently ${existing} account(s) in this database.`,
     );
+    if (existing === 0) {
+      console.log(
+        "Nobody can sign in yet. Set SEED_OWNER_EMAIL, SEED_OWNER_NAME and SEED_OWNER_PASSWORD\n" +
+          "(plus the matching SEED_PARTNER_* trio) and deploy again.",
+      );
+    }
   }
 
   const count = await prisma.product.count();

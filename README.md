@@ -65,27 +65,49 @@ All money is stored in integer cents, so no rounding drift.
 
 ## Deploying to Vercel
 
-1. Push this repo to GitHub and import it at [vercel.com/new](https://vercel.com/new).
-2. Create a Postgres database (Vercel Postgres or [Neon](https://neon.tech) both work
-   on a free tier) and copy its connection string.
-3. In the Vercel project's **Settings → Environment Variables**, add:
+No terminal required — the build creates the database tables and both accounts for you.
 
-   - `DATABASE_URL` — the connection string
-   - `AUTH_SECRET` — output of `openssl rand -base64 32`
+1. Import this repo at [vercel.com/new](https://vercel.com/new).
+2. Create a Postgres database ([Neon](https://neon.tech) and Vercel Postgres both have
+   a free tier) and copy its connection string.
+3. In the Vercel project's **Settings → Environment Variables**, add all eight:
 
-4. Deploy. The build runs `prisma migrate deploy`, so the schema is created for you.
-5. Create the two accounts once, from your own machine, pointed at the production
-   database:
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL` | the Postgres connection string |
+   | `AUTH_SECRET` | a long random string (32+ characters) |
+   | `SEED_OWNER_EMAIL` | your email — this is your username |
+   | `SEED_OWNER_NAME` | your name |
+   | `SEED_OWNER_PASSWORD` | the password you want |
+   | `SEED_PARTNER_EMAIL` | her email |
+   | `SEED_PARTNER_NAME` | her name |
+   | `SEED_PARTNER_PASSWORD` | her password |
 
-   ```bash
-   DATABASE_URL="<production connection string>" \
-   SEED_OWNER_EMAIL="you@example.com" SEED_OWNER_NAME="You" SEED_OWNER_PASSWORD="…" \
-   SEED_PARTNER_EMAIL="her@example.com" SEED_PARTNER_NAME="Her" SEED_PARTNER_PASSWORD="…" \
-   npm run db:seed
-   ```
+4. Deploy. The build runs the migrations, creates the two accounts, and seeds a
+   starter product list. Sign in at your Vercel URL.
 
-Re-running the seed updates the password for an existing email, so it doubles as a
-password reset.
+### Changing a password later
+
+Edit `SEED_OWNER_PASSWORD` (or `SEED_PARTNER_PASSWORD`) in Vercel and redeploy. The
+seed updates the password for an existing email, so it doubles as a password reset.
+
+Because the seed runs on every deploy, whatever is in those variables is the password
+after each deploy. Orders, people, and payments are never touched — only the two
+accounts and the starter product list, and the products are only created when the
+table is empty.
+
+### Seeding from a terminal instead
+
+If you'd rather not keep passwords in Vercel, leave the `SEED_*` variables unset (the
+build skips account setup and says so) and run this once from a machine with Node
+installed:
+
+```bash
+DATABASE_URL="<production connection string>" \
+SEED_OWNER_EMAIL="you@example.com" SEED_OWNER_NAME="You" SEED_OWNER_PASSWORD="…" \
+SEED_PARTNER_EMAIL="her@example.com" SEED_PARTNER_NAME="Her" SEED_PARTNER_PASSWORD="…" \
+npm run db:seed
+```
 
 ## Security notes
 
