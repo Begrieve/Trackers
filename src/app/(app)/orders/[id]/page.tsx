@@ -5,18 +5,9 @@ import { BUCKET_CLASS, BUCKET_LABEL, bucketOf, orderMath } from "@/lib/ledger";
 import { formatDate, formatMoney, toDateInputValue } from "@/lib/money";
 import { deleteOrder, deletePayment, markPaidInFull, setOrderStatus, updateOrder } from "@/actions/orders";
 import { PaymentForm } from "./payment-form";
+import { methodLabel } from "@/lib/payment-methods";
 
 export const dynamic = "force-dynamic";
-
-const METHOD_LABEL: Record<string, string> = {
-  CASH: "Cash",
-  VENMO: "Venmo",
-  ZELLE: "Zelle",
-  CASHAPP: "Cash App",
-  PAYPAL: "PayPal",
-  CHECK: "Check",
-  OTHER: "Other",
-};
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,14 +20,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/orders" className="text-sm font-medium text-stone-500 hover:text-stone-800">
+        <Link href="/orders" className="text-sm font-medium text-fg-muted hover:text-fg">
           ← Orders
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">{order.customer.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-fg">{order.customer.name}</h1>
           <span className={`pill ${BUCKET_CLASS[bucket]}`}>{BUCKET_LABEL[bucket]}</span>
         </div>
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-fg-muted">
           Ordered {formatDate(order.orderedAt)}
           {order.deliveredAt ? ` · delivered ${formatDate(order.deliveredAt)}` : ""}
           {order.dueAt && !order.deliveredAt ? ` · due ${formatDate(order.dueAt)}` : ""}
@@ -45,20 +36,20 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-4">
-          <p className="text-xs font-semibold text-stone-500 uppercase">Total</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-stone-900">{formatMoney(math.total)}</p>
+          <p className="text-xs font-semibold text-fg-muted uppercase">Total</p>
+          <p className="mt-1 text-xl font-bold tabular-nums text-fg">{formatMoney(math.total)}</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs font-semibold text-stone-500 uppercase">Paid</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-emerald-700">{formatMoney(math.paid)}</p>
+          <p className="text-xs font-semibold text-fg-muted uppercase">Paid</p>
+          <p className="mt-1 text-xl font-bold tabular-nums text-success">{formatMoney(math.paid)}</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs font-semibold text-stone-500 uppercase">
+          <p className="text-xs font-semibold text-fg-muted uppercase">
             {math.balance < 0 ? "Credit" : "Balance"}
           </p>
           <p
             className={`mt-1 text-xl font-bold tabular-nums ${
-              math.balance > 0 ? "text-rose-700" : math.balance < 0 ? "text-violet-700" : "text-emerald-700"
+              math.balance > 0 ? "text-danger" : math.balance < 0 ? "text-info" : "text-success"
             }`}
           >
             {formatMoney(Math.abs(math.balance))}
@@ -114,17 +105,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <section className="card p-4">
-        <h2 className="mb-3 font-bold text-stone-900">Items</h2>
-        <ul className="divide-y divide-stone-100">
+        <h2 className="mb-3 font-bold text-fg">Items</h2>
+        <ul className="divide-y divide-line">
           {order.items.map((item) => (
             <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-stone-900">{item.name}</p>
-                <p className="text-xs text-stone-500">
+                <p className="truncate text-sm font-medium text-fg">{item.name}</p>
+                <p className="text-xs text-fg-muted">
                   {item.quantity} × {formatMoney(item.unitPrice)}
                 </p>
               </div>
-              <p className="font-semibold tabular-nums text-stone-900">
+              <p className="font-semibold tabular-nums text-fg">
                 {formatMoney(item.quantity * item.unitPrice)}
               </p>
             </li>
@@ -133,22 +124,22 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section className="card p-4">
-        <h2 className="mb-3 font-bold text-stone-900">Payments</h2>
+        <h2 className="mb-3 font-bold text-fg">Payments</h2>
 
         {order.payments.length === 0 ? (
-          <p className="mb-4 text-sm text-stone-500">Nothing received yet.</p>
+          <p className="mb-4 text-sm text-fg-muted">Nothing received yet.</p>
         ) : (
-          <ul className="mb-4 divide-y divide-stone-100">
+          <ul className="mb-4 divide-y divide-line">
             {order.payments.map((payment) => (
               <li key={payment.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-stone-900">
+                  <p className="text-sm font-medium text-fg">
                     {formatMoney(payment.amount)}{" "}
-                    <span className="font-normal text-stone-500">
-                      · {METHOD_LABEL[payment.method] ?? payment.method}
+                    <span className="font-normal text-fg-muted">
+                      · {methodLabel(payment.method)}
                     </span>
                   </p>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-fg-muted">
                     {formatDate(payment.paidAt)}
                     {payment.note ? ` · ${payment.note}` : ""}
                   </p>
@@ -157,7 +148,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   <input type="hidden" name="paymentId" value={payment.id} />
                   <button
                     type="submit"
-                    className="rounded-lg px-2 py-1 text-xs font-semibold text-stone-400 hover:bg-rose-50 hover:text-rose-700"
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-fg-subtle hover:bg-danger-soft hover:text-danger"
                   >
                     Remove
                   </button>
@@ -171,7 +162,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section className="card p-4">
-        <h2 className="mb-3 font-bold text-stone-900">Details</h2>
+        <h2 className="mb-3 font-bold text-fg">Details</h2>
         <form action={updateOrder} className="space-y-3">
           <input type="hidden" name="id" value={order.id} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -216,7 +207,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <input type="hidden" name="id" value={order.id} />
         <button
           type="submit"
-          className="text-sm font-semibold text-stone-400 hover:text-rose-700"
+          className="text-sm font-semibold text-fg-subtle hover:text-danger"
         >
           Delete this order permanently
         </button>

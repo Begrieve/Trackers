@@ -66,7 +66,7 @@ export function LoginForm({ next }: { next?: string }) {
       </div>
 
       {error ? (
-        <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}

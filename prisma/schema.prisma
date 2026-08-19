@@ -16,6 +16,7 @@ model User {
 
   orders   Order[]
   payments Payment[]
+  batches  Batch[]
 }
 
 model Customer {
@@ -40,7 +41,8 @@ model Product {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  items OrderItem[]
+  items      OrderItem[]
+  batchItems BatchItem[]
 }
 
 enum OrderStatus {
@@ -86,11 +88,8 @@ model OrderItem {
 
 enum PaymentMethod {
   CASH
-  VENMO
-  ZELLE
-  CASHAPP
-  PAYPAL
-  CHECK
+  BANK_TRANSFER
+  CHEQUE
   OTHER
 }
 
@@ -111,4 +110,33 @@ model Payment {
 
   @@index([orderId])
   @@index([customerId])
+}
+
+model Batch {
+  id          String   @id @default(cuid())
+  label       String
+  madeOn      DateTime @default(now())
+  readyOn     DateTime?
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  items     BatchItem[]
+
+  @@index([madeOn])
+}
+
+model BatchItem {
+  id        String @id @default(cuid())
+  batchId   String
+  productId String
+  name      String
+  quantity  Int
+
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([batchId])
 }

@@ -5,6 +5,19 @@
  * readable message rather than a Prisma schema validation error.
  */
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+
+// Hosts inject real environment variables; a local checkout keeps them in .env,
+// which node does not read on its own. Values already set always win.
+for (const file of [".env.local", ".env"]) {
+  if (existsSync(file)) {
+    try {
+      process.loadEnvFile(file);
+    } catch {
+      // Node < 20.12 has no loadEnvFile; the host-provided variables still apply.
+    }
+  }
+}
 
 const RUNTIME_KEYS = [
   "DATABASE_URL",

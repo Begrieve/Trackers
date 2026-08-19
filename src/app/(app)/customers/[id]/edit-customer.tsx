@@ -26,7 +26,7 @@ export function EditCustomer({ customer }: { customer: Customer }) {
 
   return (
     <section className="card p-4">
-      <h2 className="mb-3 font-bold text-stone-900">Contact details</h2>
+      <h2 className="mb-3 font-bold text-fg">Contact details</h2>
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="id" value={customer.id} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -57,11 +57,11 @@ export function EditCustomer({ customer }: { customer: Customer }) {
         </div>
 
         {state.error ? (
-          <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
             {state.error}
           </p>
         ) : null}
-        {state.ok ? <p className="text-sm text-emerald-700">Saved.</p> : null}
+        {state.ok ? <p className="text-sm text-success">Saved.</p> : null}
 
         <Submit />
       </form>

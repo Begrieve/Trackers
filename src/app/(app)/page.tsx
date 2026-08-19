@@ -20,8 +20,8 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Dashboard</h1>
-          <p className="text-sm text-stone-500">Where every jar and every dollar stands right now.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-fg">Dashboard</h1>
+          <p className="text-sm text-fg-muted">Where every jar and every dollar stands right now.</p>
         </div>
         <Link href="/orders/new" className="btn-primary">
           + New order
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
           subtitle="Delivered, not paid in full"
           action={
             owesMoney.length > 0 ? (
-              <span className="text-sm font-semibold tabular-nums text-rose-700">
+              <span className="text-sm font-semibold tabular-nums text-danger">
                 {formatMoney(totals.receivable)}
               </span>
             ) : null
@@ -95,7 +95,7 @@ export default async function DashboardPage() {
           subtitle="Paid up front, not delivered yet"
           action={
             owePr.length > 0 ? (
-              <span className="text-sm font-semibold tabular-nums text-violet-700">
+              <span className="text-sm font-semibold tabular-nums text-info">
                 {formatMoney(totals.prepaid)}
               </span>
             ) : null
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
           subtitle="No money taken yet"
           action={
             awaiting.length > 0 ? (
-              <span className="text-sm font-semibold tabular-nums text-amber-700">
+              <span className="text-sm font-semibold tabular-nums text-warn">
                 {formatMoney(awaiting.reduce((sum, { math }) => sum + math.collectOnDelivery, 0))}
               </span>
             ) : null
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
         {awaiting.length === 0 ? (
           <EmptyState>
             No open orders.{" "}
-            <Link href="/orders/new" className="font-semibold text-rose-700 underline">
+            <Link href="/orders/new" className="font-semibold text-danger underline">
               Add one
             </Link>
             .
