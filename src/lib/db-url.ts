@@ -20,7 +20,9 @@ const MIGRATION_KEYS = [
   ...RUNTIME_KEYS,
 ] as const;
 
-function firstNonEmpty(keys: readonly string[], env: NodeJS.ProcessEnv) {
+type Env = Record<string, string | undefined>;
+
+function firstNonEmpty(keys: readonly string[], env: Env) {
   for (const key of keys) {
     const value = env[key]?.trim();
     if (value) return { key, value };
@@ -28,7 +30,7 @@ function firstNonEmpty(keys: readonly string[], env: NodeJS.ProcessEnv) {
   return null;
 }
 
-export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveDatabaseUrl(env: Env = process.env): string {
   const found = firstNonEmpty(RUNTIME_KEYS, env);
   if (found) return found.value;
 
@@ -38,10 +40,10 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
   );
 }
 
-export function resolveMigrationUrl(env: NodeJS.ProcessEnv = process.env) {
+export function resolveMigrationUrl(env: Env = process.env) {
   return firstNonEmpty(MIGRATION_KEYS, env);
 }
 
-export function resolveRuntimeUrl(env: NodeJS.ProcessEnv = process.env) {
+export function resolveRuntimeUrl(env: Env = process.env) {
   return firstNonEmpty(RUNTIME_KEYS, env);
 }

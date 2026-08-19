@@ -55,8 +55,8 @@ export default async function OrdersPage({
     <div className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Orders</h1>
-          <p className="text-sm text-stone-500">
+          <h1 className="text-2xl font-bold tracking-tight text-fg">Orders</h1>
+          <p className="text-sm text-fg-muted">
             {rows.length} {rows.length === 1 ? "order" : "orders"}
             {due > 0 ? ` · ${formatMoney(due)} outstanding` : ""}
           </p>
@@ -87,8 +87,8 @@ export default async function OrdersPage({
             href={`/orders?filter=${f.key}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
             className={`rounded-full px-3.5 py-1.5 text-sm font-semibold whitespace-nowrap ring-1 ring-inset transition ${
               f.key === filter
-                ? "bg-stone-900 text-white ring-stone-900"
-                : "bg-white text-stone-600 ring-stone-200 hover:bg-stone-50"
+                ? "bg-fg text-bg ring-fg"
+                : "bg-surface text-fg-muted ring-line hover:bg-surface-2"
             }`}
           >
             {f.label}

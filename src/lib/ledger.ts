@@ -69,11 +69,11 @@ export const BUCKET_LABEL: Record<OrderBucket, string> = {
 };
 
 export const BUCKET_CLASS: Record<OrderBucket, string> = {
-  AWAITING_DELIVERY: "bg-slate-100 text-slate-700 ring-slate-200",
-  PREPAID_OWE_PRODUCT: "bg-violet-100 text-violet-800 ring-violet-200",
-  UNPAID_RECEIVABLE: "bg-rose-100 text-rose-800 ring-rose-200",
-  SETTLED: "bg-emerald-100 text-emerald-800 ring-emerald-200",
-  CANCELLED: "bg-zinc-100 text-zinc-500 ring-zinc-200",
+  AWAITING_DELIVERY: "bg-surface-2 text-fg-muted ring-line",
+  PREPAID_OWE_PRODUCT: "bg-info-soft text-info-fg ring-info-line",
+  UNPAID_RECEIVABLE: "bg-danger-soft text-danger-fg ring-danger-line",
+  SETTLED: "bg-success-soft text-success-fg ring-success-line",
+  CANCELLED: "bg-surface-2 text-fg-muted ring-line",
 };
 
 export type Totals = {

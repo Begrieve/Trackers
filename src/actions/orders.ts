@@ -7,8 +7,9 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/auth";
 import { parseMoney } from "@/lib/money";
 import type { ActionState } from "./customers";
+import { PAYMENT_METHODS, isPaymentMethod, type PaymentMethodValue } from "@/lib/payment-methods";
 
-const METHODS = ["CASH", "VENMO", "ZELLE", "CASHAPP", "PAYPAL", "CHECK", "OTHER"] as const;
+
 
 function parseDate(value: FormDataEntryValue | null): Date | null {
   const raw = String(value ?? "").trim();
@@ -67,9 +68,7 @@ export async function createOrder(_prev: ActionState, formData: FormData): Promi
   }
 
   const methodRaw = String(formData.get("prepaidMethod") ?? "CASH");
-  const method = (METHODS as readonly string[]).includes(methodRaw)
-    ? (methodRaw as (typeof METHODS)[number])
-    : "CASH";
+  const method: PaymentMethodValue = isPaymentMethod(methodRaw) ? methodRaw : "CASH";
 
   const delivered = formData.get("delivered") === "on";
   const orderedAt = parseDate(formData.get("orderedAt")) ?? new Date();
@@ -160,7 +159,7 @@ export async function deleteOrder(formData: FormData): Promise<void> {
 const paymentSchema = z.object({
   orderId: z.string().min(1),
   amount: z.string().trim().min(1, "Enter an amount"),
-  method: z.enum(METHODS),
+  method: z.enum(PAYMENT_METHODS),
   paidAt: z.string().optional(),
   note: z.string().trim().max(300).optional(),
 });

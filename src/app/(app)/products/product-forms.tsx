@@ -55,7 +55,7 @@ export function AddProduct() {
       </div>
 
       {state.error ? (
-        <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       ) : null}
@@ -85,12 +85,12 @@ export function EditProduct({ product }: { product: Product }) {
         defaultValue={(product.unitPrice / 100).toFixed(2)}
       />
       <input name="unitLabel" className="field w-24" defaultValue={product.unitLabel} />
-      <label className="flex items-center gap-2 text-sm text-stone-600">
-        <input type="checkbox" name="active" defaultChecked={product.active} className="h-4 w-4 accent-rose-700" />
+      <label className="flex items-center gap-2 text-sm text-fg-muted">
+        <input type="checkbox" name="active" defaultChecked={product.active} className="h-4 w-4 accent-brand" />
         Active
       </label>
       <Submit label="Save" variant="secondary" />
-      {state.error ? <span className="text-sm text-rose-700">{state.error}</span> : null}
+      {state.error ? <span className="text-sm text-danger">{state.error}</span> : null}
     </form>
   );
 }

@@ -17,10 +17,10 @@ export default async function NewOrderPage() {
   return (
     <div className="space-y-5">
       <div>
-        <Link href="/orders" className="text-sm font-medium text-stone-500 hover:text-stone-800">
+        <Link href="/orders" className="text-sm font-medium text-fg-muted hover:text-fg">
           ← Orders
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">New order</h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-fg">New order</h1>
       </div>
 
       <NewOrderForm customers={customers} products={products} />

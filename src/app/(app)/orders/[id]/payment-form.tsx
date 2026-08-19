@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { addPayment } from "@/actions/orders";
 import type { ActionState } from "@/actions/customers";
 import { toDateInputValue } from "@/lib/money";
+import { MethodOptions } from "@/components/method-select";
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -47,13 +48,7 @@ export function PaymentForm({ orderId, suggested }: { orderId: string; suggested
             Method
           </label>
           <select id="method" name="method" className="field" defaultValue="CASH">
-            <option value="CASH">Cash</option>
-            <option value="VENMO">Venmo</option>
-            <option value="ZELLE">Zelle</option>
-            <option value="CASHAPP">Cash App</option>
-            <option value="PAYPAL">PayPal</option>
-            <option value="CHECK">Check</option>
-            <option value="OTHER">Other</option>
+            <MethodOptions />
           </select>
         </div>
         <div>
@@ -73,7 +68,7 @@ export function PaymentForm({ orderId, suggested }: { orderId: string; suggested
       <input name="note" className="field" placeholder="Note (optional)" />
 
       {state.error ? (
-        <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       ) : null}

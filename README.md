@@ -24,6 +24,33 @@ rather than silently disappearing.
 
 All money is stored in integer cents, so no rounding drift.
 
+## Batches
+
+**Batches** records what you actually made — jars per product, the date, and notes.
+Set against your orders, it answers the question a ledger alone can't:
+
+- **Spare** — made, not delivered, not promised to anyone
+- **Short** — promised on open orders beyond what you've made, so you know what to cook
+
+Cancelled orders release their claim on stock.
+
+## Reports
+
+**Reports** covers any date period — this month, last month, last 90 days, this year,
+all time, or an explicit from/to — and breaks the period down by product, by person,
+and by payment method. **Download CSV** exports the same figures for your records.
+
+One deliberate distinction: *billed* counts orders **placed** in the period, while
+*collected* counts payments **received** in it. Money that arrives this month for an
+order from two months ago shows up in collected, not billed — which is what makes the
+figures usable for actual bookkeeping.
+
+## Themes
+
+Light, dark, or follow the device — the toggle sits in the header, and the choice is
+remembered per device. A small inline script applies the saved theme before first
+paint, so a dark-theme visitor never gets a white flash on load.
+
 ## Stack
 
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS 4
@@ -142,5 +169,6 @@ npm run db:seed
 npm test
 ```
 
-Covers the ledger math: receivables, prepayments, partial payments, overpayment
-credit, cancellations, and the dashboard roll-ups.
+Covers the ledger math (receivables, prepayments, partial payments, overpayment
+credit, cancellations, roll-ups), the batch stock maths, the report date ranges and
+aggregations, and database-URL resolution.

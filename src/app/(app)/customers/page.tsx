@@ -25,8 +25,8 @@ export default async function CustomersPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">People</h1>
-          <p className="text-sm text-stone-500">Everyone you distribute to, and where they stand.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-fg">People</h1>
+          <p className="text-sm text-fg-muted">Everyone you distribute to, and where they stand.</p>
         </div>
         <AddCustomer />
       </div>
@@ -34,16 +34,16 @@ export default async function CustomersPage() {
       {rows.length === 0 ? (
         <EmptyState>No one added yet. Add a person, or just start a new order.</EmptyState>
       ) : (
-        <div className="card divide-y divide-stone-100">
+        <div className="card divide-y divide-line">
           {rows.map(({ customer, totals, orderCount }) => (
             <Link
               key={customer.id}
               href={`/customers/${customer.id}`}
-              className="flex items-center justify-between gap-3 p-4 transition hover:bg-stone-50"
+              className="flex items-center justify-between gap-3 p-4 transition hover:bg-surface-2"
             >
               <div className="min-w-0">
-                <p className="truncate font-semibold text-stone-900">{customer.name}</p>
-                <p className="mt-0.5 text-sm text-stone-500">
+                <p className="truncate font-semibold text-fg">{customer.name}</p>
+                <p className="mt-0.5 text-sm text-fg-muted">
                   {orderCount} {orderCount === 1 ? "order" : "orders"}
                   {customer.phone ? ` · ${customer.phone}` : ""}
                 </p>
@@ -51,19 +51,19 @@ export default async function CustomersPage() {
 
               <div className="shrink-0 text-right">
                 {totals.outstanding > 0 ? (
-                  <p className="font-bold tabular-nums text-rose-700">
+                  <p className="font-bold tabular-nums text-danger">
                     {formatMoney(totals.outstanding)} owed
                   </p>
                 ) : (
-                  <p className="font-medium text-emerald-700">settled</p>
+                  <p className="font-medium text-success">settled</p>
                 )}
                 {totals.prepaid > 0 ? (
-                  <p className="text-sm tabular-nums text-violet-700">
+                  <p className="text-sm tabular-nums text-info">
                     {formatMoney(totals.prepaid)} prepaid
                   </p>
                 ) : null}
                 {totals.credit > 0 ? (
-                  <p className="text-sm tabular-nums text-stone-500">
+                  <p className="text-sm tabular-nums text-fg-muted">
                     {formatMoney(totals.credit)} credit
                   </p>
                 ) : null}
