@@ -124,8 +124,20 @@ model Batch {
 
   createdBy User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
   items     BatchItem[]
+  costs     BatchCost[]
 
   @@index([madeOn])
+}
+
+model BatchCost {
+  id      String @id @default(cuid())
+  batchId String
+  label   String
+  amount  Int
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
 }
 
 model BatchItem {

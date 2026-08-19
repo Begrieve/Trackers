@@ -12,6 +12,7 @@ function order(overrides: {
   orderedAt: Date;
   status?: "PENDING" | "DELIVERED" | "CANCELLED";
   items: [string, number, number][];
+  productIds?: Record<string, string>;
   payments?: [number, string, Date][];
 }) {
   return {
@@ -20,7 +21,12 @@ function order(overrides: {
     customer: { id: overrides.customerId, name: overrides.customerName },
     status: overrides.status ?? "DELIVERED",
     orderedAt: overrides.orderedAt,
-    items: overrides.items.map(([name, quantity, unitPrice]) => ({ name, quantity, unitPrice })),
+    items: overrides.items.map(([name, quantity, unitPrice]) => ({
+      name,
+      productId: overrides.productIds?.[name] ?? name,
+      quantity,
+      unitPrice,
+    })),
     payments: (overrides.payments ?? []).map(([amount, method, paidAt]) => ({ amount, method, paidAt })),
   } as unknown as FullOrder;
 }
@@ -142,10 +148,85 @@ test("product rows aggregate quantity and revenue across orders", () => {
 
 test("batches are counted only when made inside the range", () => {
   const batches = [
-    { madeOn: new Date(2026, 6, 4), items: [{ quantity: 12 }] },
-    { madeOn: new Date(2026, 3, 4), items: [{ quantity: 99 }] },
+    { madeOn: new Date(2026, 6, 4), items: [{ productId: "p1", quantity: 12 }], costs: [] },
+    { madeOn: new Date(2026, 3, 4), items: [{ productId: "p1", quantity: 99 }], costs: [] },
   ];
   const report = buildReport([], batches, rangeForPreset("this-month", NOW));
   assert.equal(report.batchCount, 1);
   assert.equal(report.jarsMade, 12);
+});
+
+test("profit subtracts the cost of the jars sold from what was billed", () => {
+  const orders = [
+    order({
+      id: "a",
+      customerId: "c1",
+      customerName: "Grace",
+      orderedAt: new Date(2026, 6, 5),
+      items: [["Napa", 4, 2500]], // billed $100
+    }),
+  ];
+  // 20 jars cooked for $40 => $2.00 a jar, so 4 jars cost $8.
+  const batches = [
+    { madeOn: new Date(2026, 5, 1), items: [{ productId: "Napa", quantity: 20 }], costs: [{ amount: 4000 }] },
+  ];
+
+  const report = buildReport(orders, batches, rangeForPreset("this-month", NOW));
+  assert.equal(report.billed, 10000);
+  assert.equal(report.cogs, 800);
+  assert.equal(report.profit, 9200);
+  assert.equal(report.marginPct, 92);
+  assert.equal(report.uncostedJars, 0);
+  assert.equal(report.products[0].cost, 800);
+  assert.equal(report.products[0].profit, 9200);
+});
+
+test("costs from an earlier period still price jars sold now", () => {
+  const orders = [
+    order({
+      id: "a",
+      customerId: "c1",
+      customerName: "Grace",
+      orderedAt: new Date(2026, 6, 5),
+      items: [["Napa", 1, 2500]],
+    }),
+  ];
+  const batches = [
+    // Cooked back in April, sold in July.
+    { madeOn: new Date(2026, 3, 1), items: [{ productId: "Napa", quantity: 10 }], costs: [{ amount: 5000 }] },
+  ];
+
+  const report = buildReport(orders, batches, rangeForPreset("this-month", NOW));
+  assert.equal(report.batchSpend, 0, "the spend happened in April");
+  assert.equal(report.cogs, 500, "but the jar still cost $5 to make");
+  assert.equal(report.profit, 2000);
+});
+
+test("jars with no recorded cost are counted so the margin is not trusted blindly", () => {
+  const orders = [
+    order({
+      id: "a",
+      customerId: "c1",
+      customerName: "Grace",
+      orderedAt: new Date(2026, 6, 5),
+      items: [["Radish", 3, 1600]],
+    }),
+  ];
+
+  const report = buildReport(orders, [], rangeForPreset("this-month", NOW));
+  assert.equal(report.cogs, 0);
+  assert.equal(report.uncostedJars, 3);
+  assert.equal(report.profit, report.billed, "profit equals revenue only because cost is unknown");
+});
+
+test("batch spend counts every cost line of batches made in the period", () => {
+  const batches = [
+    {
+      madeOn: new Date(2026, 6, 4),
+      items: [{ productId: "Napa", quantity: 10 }],
+      costs: [{ amount: 3000 }, { amount: 1500 }],
+    },
+  ];
+  const report = buildReport([], batches, rangeForPreset("this-month", NOW));
+  assert.equal(report.batchSpend, 4500);
 });

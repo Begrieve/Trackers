@@ -1,5 +1,6 @@
 import { orderMath, type FullOrder } from "./ledger";
 import { methodLabel } from "./payment-methods";
+import { batchTotalCost, costOfGoodsSold, marginPercent, unitCosts, type CostedBatch } from "./costing";
 
 export type Range = { from: Date; to: Date };
 
@@ -61,7 +62,14 @@ export function inRange(date: Date | string, range: Range) {
   return value >= range.from.getTime() && value <= range.to.getTime();
 }
 
-export type ProductRow = { name: string; quantity: number; revenue: number; orders: number };
+export type ProductRow = {
+  name: string;
+  quantity: number;
+  revenue: number;
+  orders: number;
+  cost: number;
+  profit: number;
+};
 export type PersonRow = {
   id: string;
   name: string;
@@ -84,16 +92,26 @@ export type Report = {
   outstanding: number;
   jarsMade: number;
   batchCount: number;
+  /** Cash spent on batches made inside the range. */
+  batchSpend: number;
+  /** Cost of the jars actually ordered in the range, at weighted-average cost. */
+  cogs: number;
+  /** Billed minus cogs. */
+  profit: number;
+  marginPct: number | null;
+  /** Jars ordered whose product has no batch cost — profit above is optimistic. */
+  uncostedJars: number;
   products: ProductRow[];
   people: PersonRow[];
   methods: MethodRow[];
 };
 
-export function buildReport(
-  orders: FullOrder[],
-  batches: { madeOn: Date; items: { quantity: number }[] }[],
-  range: Range,
-): Report {
+type ReportBatch = CostedBatch & { madeOn: Date };
+
+export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: Range): Report {
+  // Unit costs come from every batch ever made, not just this period: a jar sold
+  // today may well have been cooked last month.
+  const costs = unitCosts(batches);
   const scoped = orders.filter((o) => inRange(o.orderedAt, range) && o.status !== "CANCELLED");
 
   const products = new Map<string, ProductRow>();
@@ -103,6 +121,7 @@ export function buildReport(
   let jars = 0;
   let billed = 0;
   let outstanding = 0;
+  const soldItems: { productId: string; quantity: number }[] = [];
 
   for (const order of scoped) {
     const math = orderMath(order);
@@ -128,11 +147,15 @@ export function buildReport(
     for (const item of order.items) {
       jars += item.quantity;
       person.jars += item.quantity;
+      soldItems.push({ productId: item.productId, quantity: item.quantity });
 
-      const row = products.get(item.name) ?? { name: item.name, quantity: 0, revenue: 0, orders: 0 };
+      const row =
+        products.get(item.name) ??
+        { name: item.name, quantity: 0, revenue: 0, orders: 0, cost: 0, profit: 0 };
       row.quantity += item.quantity;
       row.revenue += item.quantity * item.unitPrice;
       row.orders += 1;
+      row.cost += (costs.get(item.productId)?.perJar ?? 0) * item.quantity;
       products.set(item.name, row);
     }
 
@@ -158,6 +181,10 @@ export function buildReport(
   }
 
   const scopedBatches = batches.filter((b) => inRange(b.madeOn, range));
+  const cogsResult = costOfGoodsSold(soldItems, costs);
+  const profit = billed - cogsResult.cost;
+
+  for (const row of products.values()) row.profit = row.revenue - row.cost;
 
   return {
     range,
@@ -168,6 +195,11 @@ export function buildReport(
     outstanding,
     jarsMade: scopedBatches.reduce((sum, b) => sum + b.items.reduce((n, i) => n + i.quantity, 0), 0),
     batchCount: scopedBatches.length,
+    batchSpend: scopedBatches.reduce((sum, b) => sum + batchTotalCost(b), 0),
+    cogs: cogsResult.cost,
+    profit,
+    marginPct: marginPercent(billed, profit),
+    uncostedJars: cogsResult.uncostedJars,
     products: [...products.values()].sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name)),
     people: [...people.values()].sort((a, b) => b.billed - a.billed || a.name.localeCompare(b.name)),
     methods: [...methods.values()].sort((a, b) => b.amount - a.amount),

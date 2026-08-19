@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/auth";
 import type { ActionState } from "./customers";
+import { parseMoney } from "@/lib/money";
 
 function parseDate(value: FormDataEntryValue | null): Date | null {
   const raw = String(value ?? "").trim();
@@ -20,6 +21,17 @@ function readLineItems(formData: FormData) {
   return productIds
     .map((productId, index) => ({ productId, quantity: quantities[index] ?? 0 }))
     .filter((line) => line.productId && Number.isFinite(line.quantity) && line.quantity > 0);
+}
+
+function readCosts(formData: FormData) {
+  const labels = formData.getAll("costLabel").map(String);
+  const amounts = formData.getAll("costAmount").map(String);
+
+  return labels
+    .map((label, index) => ({ label: label.trim(), raw: (amounts[index] ?? "").trim() }))
+    .filter((row) => row.raw !== "")
+    .map((row) => ({ label: row.label || "Cost", amount: parseMoney(row.raw) }))
+    .filter((row) => row.amount !== 0);
 }
 
 function revalidateAll(batchId?: string) {
@@ -48,6 +60,14 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
     return { error: "One of those products no longer exists." };
   }
 
+  let costs: { label: string; amount: number }[];
+  try {
+    costs = readCosts(formData);
+  } catch {
+    return { error: "Enter each cost like 24.50" };
+  }
+  if (costs.some((c) => c.amount < 0)) return { error: "Costs can't be negative." };
+
   const batch = await prisma.batch.create({
     data: {
       label,
@@ -61,6 +81,7 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
           return { productId: product.id, name: product.name, quantity: line.quantity };
         }),
       },
+      costs: { create: costs },
     },
   });
 

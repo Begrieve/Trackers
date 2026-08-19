@@ -22,7 +22,13 @@ export default async function ReportsPage({
 
   const [orders, batches] = await Promise.all([
     getOrders(),
-    prisma.batch.findMany({ select: { madeOn: true, items: { select: { quantity: true } } } }),
+    prisma.batch.findMany({
+      select: {
+        madeOn: true,
+        items: { select: { productId: true, quantity: true } },
+        costs: { select: { amount: true } },
+      },
+    }),
   ]);
 
   const report = buildReport(orders, batches, range);
@@ -119,8 +125,43 @@ export default async function ReportsPage({
         />
       </section>
 
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label="Cost of jars sold"
+          value={formatMoney(report.cogs)}
+          hint="At average cost to make"
+        />
+        <StatCard
+          label="Gross profit"
+          value={formatMoney(report.profit)}
+          hint="Billed minus cost of jars sold"
+          tone={report.profit >= 0 ? "emerald" : "rose"}
+        />
+        <StatCard
+          label="Margin"
+          value={report.marginPct === null ? "—" : `${report.marginPct}%`}
+          hint="Share of billing kept"
+          tone={report.marginPct !== null && report.marginPct < 0 ? "rose" : "neutral"}
+        />
+        <StatCard
+          label="Batch spend"
+          value={formatMoney(report.batchSpend)}
+          hint="Cash out on cooking this period"
+          tone="amber"
+        />
+      </section>
+
+      {report.uncostedJars > 0 ? (
+        <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
+          {report.uncostedJars} {report.uncostedJars === 1 ? "jar" : "jars"} sold in this period
+          {" "}
+          {report.uncostedJars === 1 ? "has" : "have"} no batch cost recorded, so profit and margin
+          are optimistic. Record a batch with its costs for those products to fix this.
+        </p>
+      ) : null}
+
       <section>
-        <SectionHeading title="By product" subtitle="Quantity and value ordered" />
+        <SectionHeading title="By product" subtitle="Quantity, value, and what it cost to make" />
         {report.products.length === 0 ? (
           <EmptyState>No orders in this period.</EmptyState>
         ) : (
@@ -131,9 +172,17 @@ export default async function ReportsPage({
                   <p className="font-semibold text-fg">{row.name}</p>
                   <p className="mt-0.5 text-sm text-fg-muted">
                     {row.quantity} {row.quantity === 1 ? "jar" : "jars"}
+                    {row.cost > 0 ? ` · ${formatMoney(row.cost)} to make` : ""}
                   </p>
                 </div>
-                <p className="shrink-0 font-bold tabular-nums text-fg">{formatMoney(row.revenue)}</p>
+                <div className="shrink-0 text-right">
+                  <p className="font-bold tabular-nums text-fg">{formatMoney(row.revenue)}</p>
+                  {row.cost > 0 ? (
+                    <p className="text-sm font-semibold tabular-nums text-success">
+                      {formatMoney(row.profit)} profit
+                    </p>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
