@@ -86,6 +86,22 @@ No terminal required — the build creates the database tables and both accounts
 4. Deploy. The build runs the migrations, creates the two accounts, and seeds a
    starter product list. Sign in at your Vercel URL.
 
+If the storage integration named the connection string something other than
+`DATABASE_URL`, the build finds it anyway — it also accepts `POSTGRES_PRISMA_URL`,
+`POSTGRES_URL`, `DATABASE_URL_UNPOOLED`, and `POSTGRES_URL_NON_POOLING`, preferring a
+direct (non-pooled) connection for migrations. An empty value counts as unset.
+
+### If the build fails on the database
+
+```
+Error validating datasource `db`: You must provide a nonempty URL.
+```
+
+That means no usable connection string was found. The build now stops earlier with a
+plainer message naming which variables it checked. Either the database was never
+attached, or the variable exists with a blank value — attach a Postgres database and
+redeploy.
+
 ### Changing a password later
 
 Edit `SEED_OWNER_PASSWORD` (or `SEED_PARTNER_PASSWORD`) in Vercel and redeploy. The
