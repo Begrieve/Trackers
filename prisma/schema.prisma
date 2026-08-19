@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  orders   Order[]
+  payments Payment[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  orders   Order[]
+  payments Payment[]
+
+  @@index([name])
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  unitLabel String   @default("jar")
+  unitPrice Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  items OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  customerId  String
+  status      OrderStatus @default(PENDING)
+  orderedAt   DateTime    @default(now())
+  dueAt       DateTime?
+  deliveredAt DateTime?
+  notes       String?
+  createdById String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customer  Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  items     OrderItem[]
+  payments  Payment[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  name      String
+  quantity  Int
+  unitPrice Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+enum PaymentMethod {
+  CASH
+  VENMO
+  ZELLE
+  CASHAPP
+  PAYPAL
+  CHECK
+  OTHER
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  orderId      String
+  customerId   String
+  amount       Int
+  method       PaymentMethod @default(CASH)
+  paidAt       DateTime      @default(now())
+  note         String?
+  recordedById String?
+  createdAt    DateTime      @default(now())
+
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  recordedBy User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([customerId])
+}
