@@ -31,12 +31,15 @@ export function AddProduct() {
   const [state, formAction] = useActionState<ActionState, FormData>(createProduct, {});
   const ref = useRef<HTMLFormElement>(null);
 
+  // Keyed on the whole state object rather than state.ok: every submission
+  // returns a fresh object, whereas ok stays true from one save to the next and
+  // so would never re-fire — leaving the form open with the last values in it.
   useEffect(() => {
     if (state.ok) {
       ref.current?.reset();
       setOpen(false);
     }
-  }, [state.ok]);
+  }, [state]);
 
   if (!open) {
     return (
