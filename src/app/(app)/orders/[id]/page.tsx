@@ -6,6 +6,7 @@ import { formatDate, formatMoney, toDateInputValue } from "@/lib/money";
 import { deleteOrder, deletePayment, markPaidInFull, setOrderStatus, updateOrder } from "@/actions/orders";
 import { PaymentForm } from "./payment-form";
 import { methodLabel } from "@/lib/payment-methods";
+import { readinessOf } from "@/lib/readiness";
 import { prisma } from "@/lib/db";
 import { ItemBatchPicker, OrderBatchPicker } from "./item-batch";
 import { EditItems, EditPayment } from "./corrections";
@@ -30,6 +31,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const math = orderMath(order);
   const bucket = bucketOf(order, math);
+  const readiness = readinessOf(order);
 
   return (
     <div className="space-y-6">
@@ -40,6 +42,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-fg">{order.customer.name}</h1>
           <span className={`pill ${BUCKET_CLASS[bucket]}`}>{BUCKET_LABEL[bucket]}</span>
+          {readiness.ready ? (
+            <span className="pill bg-success-soft text-success-fg ring-success-line">
+              {readiness.label}
+            </span>
+          ) : null}
         </div>
         <p className="mt-1 text-sm text-fg-muted">
           Ordered {formatDate(order.orderedAt)}

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { BUCKET_CLASS, BUCKET_LABEL, bucketOf, orderMath, type FullOrder } from "@/lib/ledger";
+import { readinessOf } from "@/lib/readiness";
 import { formatDate, formatMoney } from "@/lib/money";
 
 export function OrderCard({ order }: { order: FullOrder }) {
   const math = orderMath(order);
   const bucket = bucketOf(order, math);
   const jars = order.items.reduce((sum, i) => sum + i.quantity, 0);
+  const readiness = readinessOf(order);
 
   return (
     <Link
@@ -43,6 +45,11 @@ export function OrderCard({ order }: { order: FullOrder }) {
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className={`pill ${BUCKET_CLASS[bucket]}`}>{BUCKET_LABEL[bucket]}</span>
+        {readiness.ready ? (
+          <span className="pill bg-success-soft text-success-fg ring-success-line">
+            {readiness.label}
+          </span>
+        ) : null}
         {math.prepaid > 0 && order.status === "PENDING" ? (
           <span className="pill bg-surface-2 text-fg-muted ring-line">
             {formatMoney(math.prepaid)} prepaid

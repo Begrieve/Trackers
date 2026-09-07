@@ -66,6 +66,17 @@ There are three ways to attach a batch, depending on which end you're working fr
 Only lines whose product the batch actually made are ever attached, so a radish line
 can't be attributed to a napa cook.
 
+### Ready to hand over
+
+An undelivered order whose every line names a batch is shown as **Ready · B-260801-1**
+— the jars exist and are spoken for, they just haven't been handed over. It is derived,
+not stored: attaching a batch is what marks an order ready, so the label can never drift
+from what the batches say. The dashboard counts them, and **Orders → Ready to hand over**
+lists them.
+
+An order still waiting on a cook that hasn't happened stays plain, and its jars keep
+counting as short.
+
 Once set, the batch's page lists everyone who received jars from it, so a complaint
 months later traces both ways: from a person to the cook that made their jar, and from
 a suspect batch to everyone else who got one.
