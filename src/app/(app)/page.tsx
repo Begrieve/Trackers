@@ -4,12 +4,14 @@ import { bucketOf, orderMath, rollUp } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
+import { readyCount } from "@/lib/readiness";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const orders = await getOrders();
   const totals = rollUp(orders);
+  const ready = readyCount(orders);
 
   const withMath = orders.map((order) => ({ order, math: orderMath(order) }));
   const owesMoney = withMath.filter(({ order, math }) => bucketOf(order, math) === "UNPAID_RECEIVABLE");
@@ -63,6 +65,13 @@ export default async function DashboardPage() {
         <StatCard label="Collected" value={formatMoney(totals.collected)} tone="emerald" hint="All payments received" />
         <StatCard label="Total ordered" value={formatMoney(totals.orderedValue)} hint="Lifetime order value" />
         <StatCard label="Open orders" value={String(totals.ordersOpen)} hint="Not yet delivered" />
+        <StatCard
+          label="Ready to hand over"
+          value={String(ready)}
+          hint={ready > 0 ? "Jars made and set aside" : "Nothing set aside yet"}
+          tone={ready > 0 ? "emerald" : "neutral"}
+          href="/orders?filter=ready"
+        />
         <StatCard label="Customer credit" value={formatMoney(totals.credit)} hint="Overpayments on file" />
       </section>
 

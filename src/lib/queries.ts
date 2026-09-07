@@ -3,7 +3,7 @@ import type { FullOrder } from "@/lib/ledger";
 
 const include = {
   customer: true,
-  items: { orderBy: { name: "asc" } },
+  items: { orderBy: { name: "asc" }, include: { batch: { select: { code: true } } } },
   payments: { orderBy: { paidAt: "desc" } },
 } as const;
 

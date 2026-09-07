@@ -1,7 +1,7 @@
 import type { Order, OrderItem, Payment, Customer } from "@prisma/client";
 
 export type FullOrder = Order & {
-  items: OrderItem[];
+  items: (OrderItem & { batch?: { code: string } | null })[];
   payments: Payment[];
   customer: Customer;
 };

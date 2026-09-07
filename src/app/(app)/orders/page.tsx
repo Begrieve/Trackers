@@ -4,6 +4,7 @@ import { bucketOf, orderMath } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState } from "@/components/ui";
+import { readinessOf } from "@/lib/readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ const FILTERS = [
   { key: "receivable", label: "Delivered, unpaid" },
   { key: "prepaid", label: "Prepaid" },
   { key: "pending", label: "Not delivered" },
+  { key: "ready", label: "Ready to hand over" },
   { key: "settled", label: "Settled" },
 ] as const;
 
@@ -42,6 +44,8 @@ export default async function OrdersPage({
           return bucket === "PREPAID_OWE_PRODUCT";
         case "pending":
           return order.status === "PENDING";
+        case "ready":
+          return readinessOf(order).ready;
         case "settled":
           return bucket === "SETTLED";
         default:
