@@ -15,7 +15,13 @@ export default async function BatchesPage() {
     }),
     prisma.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
     prisma.orderItem.findMany({
-      select: { productId: true, name: true, quantity: true, order: { select: { status: true } } },
+      select: {
+        productId: true,
+        name: true,
+        quantity: true,
+        batchId: true,
+        order: { select: { status: true } },
+      },
     }),
   ]);
 
@@ -25,6 +31,7 @@ export default async function BatchesPage() {
       productId: i.productId,
       name: i.name,
       quantity: i.quantity,
+      batchId: i.batchId,
       status: i.order.status,
     })),
   );
@@ -41,6 +48,7 @@ export default async function BatchesPage() {
   const totalSpare = stock.reduce((sum, r) => sum + r.spare, 0);
   const totalShort = stock.reduce((sum, r) => sum + r.short, 0);
   const totalCommitted = stock.reduce((sum, r) => sum + r.committed, 0);
+  const totalUntracked = stock.reduce((sum, r) => sum + r.untracked, 0);
 
   return (
     <div className="space-y-8">
@@ -66,17 +74,27 @@ export default async function BatchesPage() {
           hint="On orders not yet delivered"
           tone="violet"
         />
-        <StatCard label="Spare" value={String(totalSpare)} hint="Made, unclaimed" tone="emerald" />
+        <StatCard label="Spare" value={String(totalSpare)} hint="On hand, unclaimed" tone="emerald" />
         <StatCard
           label="Short"
           value={String(totalShort)}
-          hint={totalShort > 0 ? "Need to make these" : "Everything is covered"}
+          hint={totalShort > 0 ? "Still to make for open orders" : "Every open order is covered"}
           tone={totalShort > 0 ? "rose" : "neutral"}
         />
       </section>
 
+      {totalUntracked > 0 ? (
+        <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
+          {totalUntracked} {totalUntracked === 1 ? "jar has" : "jars have"} been delivered from
+          stock with no batch behind{" "}
+          {totalUntracked === 1 ? "it" : "them"} — cooks from before you started recording
+          batches. They are not counted as short, because they have already been handed over. To
+          account for them, record a batch dated when you made them.
+        </p>
+      ) : null}
+
       <section>
-        <SectionHeading title="Where each product stands" subtitle="Made, minus delivered and promised" />
+        <SectionHeading title="Where each product stands" subtitle="On hand is what you made and still hold" />
         {stock.length === 0 ? (
           <EmptyState>Record a batch or two and this fills in.</EmptyState>
         ) : (
@@ -88,6 +106,11 @@ export default async function BatchesPage() {
                   <p className="mt-0.5 text-sm text-fg-muted">
                     {row.made} made · {row.delivered} delivered · {row.committed} promised
                   </p>
+                  {row.untracked > 0 ? (
+                    <p className="mt-0.5 text-sm text-warn">
+                      {row.untracked} delivered with no batch recorded
+                    </p>
+                  ) : null}
                   {(costPerJar.get(row.productId)?.perJar ?? 0) > 0 ? (
                     <p className="mt-0.5 text-sm text-fg-subtle">
                       {formatMoney(costPerJar.get(row.productId)!.perJar)} per jar to make

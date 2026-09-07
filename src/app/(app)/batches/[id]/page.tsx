@@ -5,6 +5,7 @@ import { formatDate, formatMoney } from "@/lib/money";
 import { batchJars, batchTotalCost } from "@/lib/costing";
 import { EmptyState, SectionHeading } from "@/components/ui";
 import { deleteBatch } from "@/actions/batches";
+import { FillOrders, type FillableOrder } from "./fill-orders";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,32 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
   });
 
   if (!batch) notFound();
+
+  const madeProductIds = batch.items.map((i) => i.productId);
+
+  // Orders that could plausibly have come from this batch: open, or delivered
+  // recently, and containing at least one product the batch actually made.
+  const candidates = await prisma.order.findMany({
+    where: {
+      status: { not: "CANCELLED" },
+      items: { some: { productId: { in: madeProductIds } } },
+    },
+    include: { customer: true, items: true },
+    orderBy: [{ status: "asc" }, { orderedAt: "desc" }],
+    take: 25,
+  });
+
+  const fillable: FillableOrder[] = candidates.map((order) => {
+    const relevant = order.items.filter((i) => madeProductIds.includes(i.productId));
+    return {
+      id: order.id,
+      customerName: order.customer.name,
+      orderedAt: order.orderedAt,
+      jars: relevant.reduce((sum, i) => sum + i.quantity, 0),
+      lines: relevant.map((i) => `${i.quantity} × ${i.name}`).join(", "),
+      alreadyAssigned: relevant.every((i) => i.batchId === batch.id),
+    };
+  });
 
   const jars = batchJars(batch);
   const cost = batchTotalCost(batch);
@@ -91,6 +118,8 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
           </div>
         </section>
       ) : null}
+
+      <FillOrders batchId={batch.id} code={batch.code} orders={fillable} />
 
       <section>
         <SectionHeading

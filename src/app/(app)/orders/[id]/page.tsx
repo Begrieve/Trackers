@@ -7,7 +7,7 @@ import { deleteOrder, deletePayment, markPaidInFull, setOrderStatus, updateOrder
 import { PaymentForm } from "./payment-form";
 import { methodLabel } from "@/lib/payment-methods";
 import { prisma } from "@/lib/db";
-import { ItemBatchPicker } from "./item-batch";
+import { ItemBatchPicker, OrderBatchPicker } from "./item-batch";
 import { EditItems, EditPayment } from "./corrections";
 
 export const dynamic = "force-dynamic";
@@ -119,7 +119,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <section className="card p-4">
-        <h2 className="mb-3 font-bold text-fg">Items</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-bold text-fg">Items</h2>
+          <OrderBatchPicker
+            orderId={order.id}
+            currentBatchId={
+              order.items.every((i) => i.batchId && i.batchId === order.items[0].batchId)
+                ? order.items[0].batchId
+                : null
+            }
+            batches={batches}
+          />
+        </div>
         <ul className="divide-y divide-line">
           {order.items.map((item) => (
             <li key={item.id} className="flex items-start justify-between gap-3 py-2.5">

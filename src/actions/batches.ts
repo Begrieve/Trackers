@@ -171,3 +171,58 @@ export async function deleteBatch(formData: FormData): Promise<void> {
   revalidateAll();
   redirect("/batches");
 }
+
+/**
+ * Point order lines at the batch that filled them. Only lines whose product the
+ * batch actually made are touched, so a radish line can never be attributed to
+ * a napa cook.
+ */
+export async function fillOrdersFromBatch(formData: FormData): Promise<void> {
+  await requireUser();
+  const batchId = String(formData.get("batchId") ?? "");
+  const orderIds = formData.getAll("orderId").map(String).filter(Boolean);
+  if (!batchId || orderIds.length === 0) return;
+
+  const batch = await prisma.batch.findUnique({
+    where: { id: batchId },
+    include: { items: { select: { productId: true } } },
+  });
+  if (!batch) return;
+
+  await prisma.orderItem.updateMany({
+    where: {
+      orderId: { in: orderIds },
+      productId: { in: batch.items.map((i) => i.productId) },
+    },
+    data: { batchId },
+  });
+
+  for (const orderId of orderIds) revalidatePath(`/orders/${orderId}`);
+  revalidateAll(batchId);
+}
+
+/** Attribute every line of one order to a batch, or clear them all. */
+export async function fillOrderFromBatch(formData: FormData): Promise<void> {
+  await requireUser();
+  const orderId = String(formData.get("orderId") ?? "");
+  const batchId = String(formData.get("batchId") ?? "").trim();
+  if (!orderId) return;
+
+  if (!batchId) {
+    await prisma.orderItem.updateMany({ where: { orderId }, data: { batchId: null } });
+  } else {
+    const batch = await prisma.batch.findUnique({
+      where: { id: batchId },
+      include: { items: { select: { productId: true } } },
+    });
+    if (!batch) return;
+
+    await prisma.orderItem.updateMany({
+      where: { orderId, productId: { in: batch.items.map((i) => i.productId) } },
+      data: { batchId },
+    });
+  }
+
+  revalidatePath(`/orders/${orderId}`);
+  revalidateAll(batchId || undefined);
+}
