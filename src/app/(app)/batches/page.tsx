@@ -4,7 +4,6 @@ import { stockByProduct } from "@/lib/stock";
 import { formatDate, formatMoney } from "@/lib/money";
 import { batchJars, batchTotalCost, unitCosts } from "@/lib/costing";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
-import { deleteBatch } from "@/actions/batches";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +125,15 @@ export default async function BatchesPage() {
                 <div key={batch.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-fg">{batch.label}</p>
+                      <Link
+                        href={`/batches/${batch.id}`}
+                        className="flex flex-wrap items-center gap-2 font-semibold text-fg hover:underline"
+                      >
+                        {batch.label}
+                        <span className="pill bg-surface-2 font-mono text-xs text-fg-muted ring-line">
+                          {batch.code}
+                        </span>
+                      </Link>
                       <p className="mt-0.5 text-sm text-fg-muted">
                         Made {formatDate(batch.madeOn)}
                         {batch.readyOn ? ` · ready ${formatDate(batch.readyOn)}` : ""}
@@ -167,15 +174,20 @@ export default async function BatchesPage() {
                     <p className="mt-3 text-sm text-fg-muted">{batch.notes}</p>
                   ) : null}
 
-                  <form action={deleteBatch} className="mt-3">
-                    <input type="hidden" name="id" value={batch.id} />
-                    <button
-                      type="submit"
-                      className="text-xs font-semibold text-fg-subtle hover:text-danger"
+                  <div className="mt-3 flex gap-4">
+                    <Link
+                      href={`/batches/${batch.id}`}
+                      className="text-xs font-semibold text-fg-muted hover:text-fg"
                     >
-                      Delete batch
-                    </button>
-                  </form>
+                      Who got it
+                    </Link>
+                    <Link
+                      href={`/batches/${batch.id}/edit`}
+                      className="text-xs font-semibold text-fg-muted hover:text-fg"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </div>
               );
             })}

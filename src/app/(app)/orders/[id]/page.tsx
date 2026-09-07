@@ -6,12 +6,26 @@ import { formatDate, formatMoney, toDateInputValue } from "@/lib/money";
 import { deleteOrder, deletePayment, markPaidInFull, setOrderStatus, updateOrder } from "@/actions/orders";
 import { PaymentForm } from "./payment-form";
 import { methodLabel } from "@/lib/payment-methods";
+import { prisma } from "@/lib/db";
+import { ItemBatchPicker } from "./item-batch";
+import { EditItems, EditPayment } from "./corrections";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const order = await getOrder(id);
+  const [order, batches, products] = await Promise.all([
+    getOrder(id),
+    prisma.batch.findMany({
+      orderBy: [{ madeOn: "desc" }],
+      select: { id: true, code: true, label: true },
+    }),
+    prisma.product.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, unitLabel: true, unitPrice: true },
+    }),
+  ]);
   if (!order) notFound();
 
   const math = orderMath(order);
@@ -108,19 +122,24 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <h2 className="mb-3 font-bold text-fg">Items</h2>
         <ul className="divide-y divide-line">
           {order.items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
+            <li key={item.id} className="flex items-start justify-between gap-3 py-2.5">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-fg">{item.name}</p>
                 <p className="text-xs text-fg-muted">
                   {item.quantity} × {formatMoney(item.unitPrice)}
                 </p>
+                <ItemBatchPicker itemId={item.id} batchId={item.batchId} batches={batches} />
               </div>
-              <p className="font-semibold tabular-nums text-fg">
+              <p className="shrink-0 font-semibold tabular-nums text-fg">
                 {formatMoney(item.quantity * item.unitPrice)}
               </p>
             </li>
           ))}
         </ul>
+
+        <div className="mt-3 border-t border-line pt-3">
+          <EditItems orderId={order.id} items={order.items} products={products} />
+        </div>
       </section>
 
       <section className="card p-4">
@@ -131,7 +150,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         ) : (
           <ul className="mb-4 divide-y divide-line">
             {order.payments.map((payment) => (
-              <li key={payment.id} className="flex items-center justify-between gap-3 py-2.5">
+              <li key={payment.id} className="flex flex-wrap items-center justify-between gap-x-3 py-2.5">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-fg">
                     {formatMoney(payment.amount)}{" "}
@@ -144,15 +163,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     {payment.note ? ` · ${payment.note}` : ""}
                   </p>
                 </div>
-                <form action={deletePayment}>
-                  <input type="hidden" name="paymentId" value={payment.id} />
-                  <button
-                    type="submit"
-                    className="rounded-lg px-2 py-1 text-xs font-semibold text-fg-subtle hover:bg-danger-soft hover:text-danger"
-                  >
-                    Remove
-                  </button>
-                </form>
+                <div className="flex shrink-0 items-center gap-1">
+                  <EditPayment payment={payment} />
+                  <form action={deletePayment}>
+                    <input type="hidden" name="paymentId" value={payment.id} />
+                    <button
+                      type="submit"
+                      className="rounded-lg px-2 py-1 text-xs font-semibold text-fg-subtle hover:bg-danger-soft hover:text-danger"
+                    >
+                      Remove
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>

@@ -73,17 +73,20 @@ model Order {
 }
 
 model OrderItem {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   orderId   String
   productId String
+  batchId   String?
   name      String
   quantity  Int
   unitPrice Int
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
+  batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([batchId])
 }
 
 enum PaymentMethod {
@@ -114,6 +117,7 @@ model Payment {
 
 model Batch {
   id          String   @id @default(cuid())
+  code        String   @unique
   label       String
   madeOn      DateTime @default(now())
   readyOn     DateTime?
@@ -122,9 +126,10 @@ model Batch {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  items     BatchItem[]
-  costs     BatchCost[]
+  createdBy  User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  items      BatchItem[]
+  costs      BatchCost[]
+  orderItems OrderItem[]
 
   @@index([madeOn])
 }

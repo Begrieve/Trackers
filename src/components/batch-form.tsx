@@ -3,11 +3,21 @@
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { createBatch } from "@/actions/batches";
+
 import type { ActionState } from "@/actions/customers";
 import { formatMoney, toDateInputValue } from "@/lib/money";
 
 type Product = { id: string; name: string; unitLabel: string };
+
+export type BatchInitial = {
+  id: string;
+  label: string;
+  madeOn: Date;
+  readyOn: Date | null;
+  notes: string | null;
+  items: { productId: string; quantity: number }[];
+  costs: { label: string; amount: number }[];
+};
 
 const COST_ROWS = ["Ingredients", "Jars & packaging", "Other"];
 
@@ -17,19 +27,47 @@ function toCents(value: string) {
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
-function Submit() {
+function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn-primary w-full sm:w-auto" disabled={pending}>
-      {pending ? "Saving…" : "Save batch"}
+      {pending ? "Saving…" : label}
     </button>
   );
 }
 
-export function BatchForm({ products }: { products: Product[] }) {
-  const [state, formAction] = useActionState<ActionState, FormData>(createBatch, {});
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [costs, setCosts] = useState<string[]>(() => COST_ROWS.map(() => ""));
+export function BatchForm({
+  products,
+  action,
+  defaultMadeOn,
+  initial,
+  submitLabel = "Save batch",
+  cancelHref = "/batches",
+}: {
+  products: Product[];
+  action: (state: ActionState, formData: FormData) => Promise<ActionState>;
+  /** Today, formatted on the server: computing it here would differ between
+   *  server and client near midnight and break hydration. */
+  defaultMadeOn: string;
+  initial?: BatchInitial;
+  submitLabel?: string;
+  cancelHref?: string;
+}) {
+  const [state, formAction] = useActionState<ActionState, FormData>(action, {});
+
+  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
+    Object.fromEntries((initial?.items ?? []).map((i) => [i.productId, i.quantity])),
+  );
+
+  // Existing cost lines first, then blanks so more can always be added.
+  const initialCostRows = initial
+    ? [
+        ...initial.costs.map((c) => ({ label: c.label, value: (c.amount / 100).toFixed(2) })),
+        ...COST_ROWS.slice(0, 2).map((label) => ({ label, value: "" })),
+      ]
+    : COST_ROWS.map((label) => ({ label, value: "" }));
+
+  const [costs, setCosts] = useState<string[]>(() => initialCostRows.map((r) => r.value));
 
   const totalJars = useMemo(
     () => Object.values(quantities).reduce((sum, n) => sum + (n || 0), 0),
@@ -120,11 +158,11 @@ export function BatchForm({ products }: { products: Product[] }) {
         </p>
 
         <ul className="space-y-2">
-          {COST_ROWS.map((placeholder, index) => (
-            <li key={placeholder} className="flex gap-2">
+          {initialCostRows.map((row, index) => (
+            <li key={`${row.label}-${index}`} className="flex gap-2">
               <input
                 name="costLabel"
-                defaultValue={placeholder}
+                defaultValue={row.label}
                 aria-label={`Cost ${index + 1} description`}
                 className="field min-w-0 flex-1"
               />
@@ -166,6 +204,7 @@ export function BatchForm({ products }: { products: Product[] }) {
             id="label"
             name="label"
             className="field"
+            defaultValue={initial?.label ?? ""}
             placeholder="Autumn napa, extra spicy"
           />
         </div>
@@ -180,14 +219,20 @@ export function BatchForm({ products }: { products: Product[] }) {
               name="madeOn"
               type="date"
               className="field"
-              defaultValue={toDateInputValue(new Date())}
+              defaultValue={initial ? toDateInputValue(initial.madeOn) : defaultMadeOn}
             />
           </div>
           <div>
             <label className="label" htmlFor="readyOn">
               Ready on (optional)
             </label>
-            <input id="readyOn" name="readyOn" type="date" className="field" />
+            <input
+              id="readyOn"
+              name="readyOn"
+              type="date"
+              className="field"
+              defaultValue={initial?.readyOn ? toDateInputValue(initial.readyOn) : ""}
+            />
           </div>
         </div>
 
@@ -200,10 +245,13 @@ export function BatchForm({ products }: { products: Product[] }) {
             name="notes"
             rows={2}
             className="field"
+            defaultValue={initial?.notes ?? ""}
             placeholder="Salt ratio, cabbage source, how it tasted…"
           />
         </div>
       </section>
+
+      {initial ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       {state.error ? (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -212,8 +260,8 @@ export function BatchForm({ products }: { products: Product[] }) {
       ) : null}
 
       <div className="flex gap-3">
-        <Submit />
-        <Link href="/batches" className="btn-secondary">
+        <Submit label={submitLabel} />
+        <Link href={cancelHref} className="btn-secondary">
           Cancel
         </Link>
       </div>
