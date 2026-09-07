@@ -239,3 +239,111 @@ export async function deletePayment(formData: FormData): Promise<void> {
   const payment = await prisma.payment.delete({ where: { id } });
   revalidateAll(payment.orderId);
 }
+
+const editPaymentSchema = z.object({
+  paymentId: z.string().min(1),
+  amount: z.string().trim().min(1, "Enter an amount"),
+  method: z.enum(PAYMENT_METHODS),
+  note: z.string().trim().max(300).optional(),
+});
+
+/** Correct a payment recorded wrongly — wrong amount, wrong method, wrong day. */
+export async function updatePayment(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireUser();
+  const parsed = editPaymentSchema.safeParse({
+    paymentId: String(formData.get("paymentId") ?? ""),
+    amount: String(formData.get("amount") ?? ""),
+    method: String(formData.get("method") ?? "CASH"),
+    note: String(formData.get("note") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  let amount: number;
+  try {
+    amount = parseMoney(parsed.data.amount);
+  } catch {
+    return { error: "Enter an amount like 25.00" };
+  }
+  if (amount === 0) return { error: "Amount can't be zero. Remove the payment instead." };
+
+  const payment = await prisma.payment.findUnique({ where: { id: parsed.data.paymentId } });
+  if (!payment) return { error: "That payment no longer exists." };
+
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      amount,
+      method: parsed.data.method,
+      paidAt: parseDate(formData.get("paidAt")) ?? payment.paidAt,
+      note: parsed.data.note || null,
+    },
+  });
+
+  revalidateAll(payment.orderId);
+  return { ok: true };
+}
+
+/** Replace an order's line items — fixes a wrong quantity or a wrong product. */
+export async function updateOrderItems(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireUser();
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) return { error: "Missing order." };
+
+  const lines = readLineItems(formData);
+  if (lines.length === 0) return { error: "An order needs at least one item." };
+
+  const products = await prisma.product.findMany({
+    where: { id: { in: lines.map((l) => l.productId) } },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  if (lines.some((l) => !byId.has(l.productId))) {
+    return { error: "One of those products no longer exists." };
+  }
+
+  const existing = await prisma.orderItem.findMany({ where: { orderId } });
+  // Keep the price each line was sold at, and its batch, when that product is
+  // still on the order: correcting a quantity must not silently re-price the
+  // order at today's list price.
+  const previous = new Map(existing.map((item) => [item.productId, item]));
+
+  await prisma.$transaction([
+    prisma.orderItem.deleteMany({ where: { orderId } }),
+    prisma.order.update({
+      where: { id: orderId },
+      data: {
+        items: {
+          create: lines.map((line) => {
+            const product = byId.get(line.productId)!;
+            const before = previous.get(line.productId);
+            return {
+              productId: product.id,
+              name: before?.name ?? product.name,
+              quantity: line.quantity,
+              unitPrice: before?.unitPrice ?? product.unitPrice,
+              batchId: before?.batchId ?? null,
+            };
+          }),
+        },
+      },
+    }),
+  ]);
+
+  revalidateAll(orderId);
+  return { ok: true };
+}
+
+/** Record which batch an order line was filled from, for traceability. */
+export async function setItemBatch(formData: FormData): Promise<void> {
+  await requireUser();
+  const itemId = String(formData.get("itemId") ?? "");
+  const batchId = String(formData.get("batchId") ?? "").trim();
+  if (!itemId) return;
+
+  const item = await prisma.orderItem.update({
+    where: { id: itemId },
+    data: { batchId: batchId || null },
+  });
+
+  revalidatePath("/batches");
+  revalidateAll(item.orderId);
+}

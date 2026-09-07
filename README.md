@@ -34,6 +34,19 @@ Set against your orders, it answers the question a ledger alone can't:
 
 Cancelled orders release their claim on stock.
 
+### Batch codes and tracing a complaint
+
+Every batch gets a short code on the day it's recorded — `B-260907-2` is the second
+batch of 7 September 2026. Short enough to write on a jar lid, and it carries the date
+on its face.
+
+On any order, each line has a **From batch…** picker. Once set, the batch's page lists
+everyone who received jars from it, so a complaint months later traces both ways:
+from a person to the cook that made their jar, and from a suspect batch to everyone
+else who got one.
+
+Editing a batch never changes its code, so anything already traced to it stays traced.
+
 ### Cost and profit
 
 A batch can also record what it cost to make — ingredients, jars, whatever you want
@@ -56,6 +69,22 @@ different questions and rarely match in any given month.
 
 If jars are sold for a product with no batch cost behind it, the report says so and
 names the count, rather than quietly reporting those jars as pure profit.
+
+## Fixing mistakes
+
+Nothing is write-once. A wrong entry can be corrected in place rather than deleted and
+rebuilt:
+
+- **Payments** — **Edit** changes the amount, method, date, or note; **Remove** deletes
+  a payment recorded by mistake (a prepayment that never happened, say).
+- **Order items** — **Correct items** changes quantities, drops a line by setting it to
+  zero, or adds one that was missed. Lines already on the order keep the price they
+  were sold at, so fixing a quantity never silently re-prices an old order at today's
+  list price.
+- **Batches** — **Edit** rewrites jar counts, costs, dates, and notes. Items and costs
+  are replaced inside one transaction, so a failure part-way can't leave a batch
+  holding half its old contents.
+- Orders, people, and products were already editable.
 
 ## Reports
 

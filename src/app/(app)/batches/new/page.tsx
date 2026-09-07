@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { BatchForm } from "./batch-form";
+import { toDateInputValue } from "@/lib/money";
+import { BatchForm } from "@/components/batch-form";
+import { createBatch } from "@/actions/batches";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +20,13 @@ export default async function NewBatchPage() {
           ← Batches
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-fg">Record a batch</h1>
+        <p className="text-sm text-fg-muted">
+          It gets a code like B-260907-1 so you can trace a jar back here later.
+        </p>
       </div>
 
-      <BatchForm products={products} />
+      <BatchForm products={products} action={createBatch}
+        defaultMadeOn={toDateInputValue(new Date())} />
     </div>
   );
 }
