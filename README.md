@@ -29,8 +29,22 @@ All money is stored in integer cents, so no rounding drift.
 **Batches** records what you actually made — jars per product, the date, and notes.
 Set against your orders, it answers the question a ledger alone can't:
 
-- **Spare** — made, not delivered, not promised to anyone
-- **Short** — promised on open orders beyond what you've made, so you know what to cook
+- **On hand** — made, minus deliveries that named the batch they came from
+- **Spare** — on hand beyond what open orders have claimed
+- **Short** — open orders beyond what's on hand, so you know what to cook
+
+Two rules keep those honest:
+
+- **A delivered jar can never make you short.** It has already left the kitchen, so it
+  can reduce what's on hand but never becomes something still to make. Only undelivered
+  promises do that.
+- **A delivery only draws down a batch when it says which batch it came from.**
+  Deliveries from before you started recording batches consume nothing, so recording a
+  new batch today doesn't get eaten into by jars handed over last month.
+
+Those unattributed deliveries are counted and reported on the Batches page rather than
+hidden, so the gap in the history is visible. To close it, record a batch dated when
+you actually made them.
 
 Cancelled orders release their claim on stock.
 
@@ -40,10 +54,21 @@ Every batch gets a short code on the day it's recorded — `B-260907-2` is the s
 batch of 7 September 2026. Short enough to write on a jar lid, and it carries the date
 on its face.
 
-On any order, each line has a **From batch…** picker. Once set, the batch's page lists
-everyone who received jars from it, so a complaint months later traces both ways:
-from a person to the cook that made their jar, and from a suspect batch to everyone
-else who got one.
+There are three ways to attach a batch, depending on which end you're working from:
+
+- **From the batch** — its page lists the orders it could fill; tick who gets it and
+  attach them all at once. This is the natural flow when a cook comes out of the
+  fridge and you're deciding where it goes.
+- **From the order** — a **Fill from** picker at the top of Items attributes the whole
+  order to one batch.
+- **Per line** — each item has its own picker, for an order filled from two cooks.
+
+Only lines whose product the batch actually made are ever attached, so a radish line
+can't be attributed to a napa cook.
+
+Once set, the batch's page lists everyone who received jars from it, so a complaint
+months later traces both ways: from a person to the cook that made their jar, and from
+a suspect batch to everyone else who got one.
 
 Editing a batch never changes its code, so anything already traced to it stays traced.
 
