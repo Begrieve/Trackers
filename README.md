@@ -106,6 +106,23 @@ different questions and rarely match in any given month.
 If jars are sold for a product with no batch cost behind it, the report says so and
 names the count, rather than quietly reporting those jars as pure profit.
 
+## Deliveries
+
+**Deliveries** is the round sheet. Kimchi here is cooked to demand rather than on a
+schedule, so it assumes no delivery day and no cadence — it answers three questions
+about right now:
+
+- **Ready to go** — orders whose jars exist, oldest order first so whoever has waited
+  longest is served first. Each stop shows the jars with their batch codes, a
+  tap-to-call number, and the cash to take at the door (or **Prepaid**, when there's
+  nothing to collect). **Mark delivered** closes it out from here.
+- **Waiting on a cook** — ordered, but nothing set aside for them yet.
+- **Make next** — what the next batch has to contain to cover every open order, with
+  jars already made and spare subtracted so it never asks for kimchi that's sitting in
+  the fridge.
+
+The page prints cleanly: the header, tab bar, and buttons drop out, leaving the sheet.
+
 ## Fixing mistakes
 
 Nothing is write-once. A wrong entry can be corrected in place rather than deleted and

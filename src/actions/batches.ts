@@ -39,6 +39,7 @@ function readCosts(formData: FormData) {
 function revalidateAll(batchId?: string) {
   revalidatePath("/");
   revalidatePath("/batches");
+  revalidatePath("/deliveries");
   revalidatePath("/reports");
   if (batchId) revalidatePath(`/batches/${batchId}`);
 }

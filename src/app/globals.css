@@ -271,3 +271,32 @@ body {
     transform: none;
   }
 }
+
+@media print {
+  /* Printed as a round sheet: drop the chrome and anything you'd tap. */
+  header,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border-color: #bbb !important;
+  }
+
+  .print-block,
+  .card {
+    break-inside: avoid;
+  }
+}
