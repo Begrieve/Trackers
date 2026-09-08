@@ -21,7 +21,7 @@ export function TopNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="ml-auto hidden items-center gap-1 lg:flex">
+    <nav className="ml-auto hidden items-center gap-0.5 lg:flex xl:gap-1">
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
         return (
@@ -29,12 +29,18 @@ export function TopNav() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-lg px-2.5 py-2 text-sm font-semibold whitespace-nowrap transition ${
+            className={`flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-semibold whitespace-nowrap transition xl:px-2.5 ${
               active
                 ? "bg-brand/12 text-brand"
                 : "text-fg-muted hover:bg-surface-2 hover:text-fg"
             }`}
           >
+            <span
+              aria-hidden
+              className={`text-base leading-none transition ${active ? "" : "grayscale-[35%] opacity-80"}`}
+            >
+              {item.icon}
+            </span>
             {item.label}
           </Link>
         );
