@@ -30,6 +30,7 @@ function readLineItems(formData: FormData) {
 function revalidateAll(orderId?: string) {
   revalidatePath("/");
   revalidatePath("/orders");
+  revalidatePath("/deliveries");
   revalidatePath("/customers");
   revalidatePath("/orders/new");
   if (orderId) revalidatePath(`/orders/${orderId}`);
@@ -345,5 +346,6 @@ export async function setItemBatch(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/batches");
+  revalidatePath("/deliveries");
   revalidateAll(item.orderId);
 }
