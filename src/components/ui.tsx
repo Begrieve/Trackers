@@ -13,12 +13,14 @@ export function StatCard({
   tone?: "neutral" | "rose" | "violet" | "emerald" | "amber";
   href?: string;
 }) {
+  // A soft wash fading into the card, so a row of tiles reads as colourful
+  // without any one of them shouting over the figure it holds.
   const tones = {
-    neutral: "border-line",
-    rose: "border-danger-line bg-danger-soft/50",
-    violet: "border-info-line bg-info-soft/50",
-    emerald: "border-success-line bg-success-soft/50",
-    amber: "border-warn-line bg-warn-soft/50",
+    neutral: "border-line bg-gradient-to-br from-surface-2/70 to-surface",
+    rose: "border-danger-line bg-gradient-to-br from-danger-soft to-surface",
+    violet: "border-info-line bg-gradient-to-br from-info-soft to-surface",
+    emerald: "border-success-line bg-gradient-to-br from-success-soft to-surface",
+    amber: "border-warn-line bg-gradient-to-br from-warn-soft to-surface",
   } as const;
 
   const valueTone = {
@@ -38,7 +40,7 @@ export function StatCard({
   );
 
   return href ? (
-    <Link href={href} className="block transition hover:-translate-y-0.5">
+    <Link href={href} className="lift block">
       {body}
     </Link>
   ) : (
@@ -68,6 +70,6 @@ export function SectionHeading({
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="card p-6 text-center text-sm text-fg-muted">{children}</div>
+    <div className="card border-dashed p-6 text-center text-sm text-fg-muted">{children}</div>
   );
 }

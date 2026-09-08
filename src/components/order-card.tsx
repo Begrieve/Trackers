@@ -12,7 +12,7 @@ export function OrderCard({ order }: { order: FullOrder }) {
   return (
     <Link
       href={`/orders/${order.id}`}
-      className="card block p-4 transition hover:border-line-strong hover:shadow"
+      className="card lift block p-4 hover:border-brand/40"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
