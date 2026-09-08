@@ -4,115 +4,131 @@
    .system falls back to the device setting. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Warm kitchen palette. Brand red is picked to clear 4.5:1 against white text
+   at button size — the app is about money, so nothing decorative is allowed to
+   make a figure harder to read. */
 :root {
-  --bg: #faf7f4;
+  --bg: #fff9f4;
   --surface: #ffffff;
-  --surface-2: #f6f3f0;
-  --fg: #1c1917;
-  --fg-muted: #78716c;
-  --fg-subtle: #a8a29e;
-  --line: #e7e5e4;
-  --line-strong: #d6d3d1;
+  --surface-2: #fdf1e9;
+  --fg: #2a1a14;
+  --fg-muted: #7d6156;
+  --fg-subtle: #9c8375;
+  --line: #f4e4d8;
+  --line-strong: #e6cfc0;
 
-  --brand: #be123c;
-  --brand-hover: #9f1239;
+  --brand: #d13a24;
+  --brand-hover: #b32e1a;
   --brand-fg: #ffffff;
 
-  --danger: #be123c;
-  --danger-soft: #ffe4e6;
-  --danger-line: #fecdd3;
-  --danger-fg: #9f1239;
+  --danger: #c4321f;
+  --danger-soft: #ffeae5;
+  --danger-line: #ffd0c6;
+  --danger-fg: #a52a17;
 
-  --success: #047857;
-  --success-soft: #d1fae5;
-  --success-line: #a7f3d0;
-  --success-fg: #065f46;
+  --success: #0b7a58;
+  --success-soft: #ddf7ec;
+  --success-line: #a5eccf;
+  --success-fg: #076046;
 
   --info: #6d28d9;
-  --info-soft: #ede9fe;
-  --info-line: #ddd6fe;
+  --info-soft: #f0e9ff;
+  --info-line: #ddd0ff;
   --info-fg: #5b21b6;
 
-  --warn: #b45309;
-  --warn-soft: #fef3c7;
-  --warn-line: #fde68a;
-  --warn-fg: #92400e;
+  --warn: #a35a06;
+  --warn-soft: #fff2d6;
+  --warn-line: #fbdf9a;
+  --warn-fg: #8a4a04;
+
+  /* Soft colour washes behind the page. */
+  --wash-1: rgba(209, 58, 36, 0.1);
+  --wash-2: rgba(11, 122, 88, 0.09);
+  --wash-3: rgba(109, 40, 217, 0.07);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --bg: #12100f;
-    --surface: #1c1917;
-    --surface-2: #262220;
-    --fg: #f5f5f4;
-    --fg-muted: #a8a29e;
-    --fg-subtle: #78716c;
-    --line: #332e2b;
-    --line-strong: #44403c;
+    --bg: #17110e;
+    --surface: #221a16;
+    --surface-2: #2e231e;
+    --fg: #fbf3ee;
+    --fg-muted: #c0a99d;
+    --fg-subtle: #9b8478;
+    --line: #3a2c25;
+    --line-strong: #4d3b32;
 
-    --brand: #e11d48;
-    --brand-hover: #f43f5e;
-    --brand-fg: #ffffff;
+    --brand: #ff6a4d;
+    --brand-hover: #ff8367;
+    --brand-fg: #2b1006;
 
-    --danger: #fb7185;
-    --danger-soft: #4c0519;
-    --danger-line: #881337;
-    --danger-fg: #fda4af;
+    --danger: #ff8a75;
+    --danger-soft: #3d1109;
+    --danger-line: #7a2415;
+    --danger-fg: #ffb3a3;
 
-    --success: #34d399;
-    --success-soft: #022c22;
-    --success-line: #065f46;
-    --success-fg: #6ee7b7;
+    --success: #4ade9f;
+    --success-soft: #06281d;
+    --success-line: #0d5c42;
+    --success-fg: #7cf0be;
 
-    --info: #a78bfa;
-    --info-soft: #2e1065;
-    --info-line: #4c1d95;
-    --info-fg: #c4b5fd;
+    --info: #b39bff;
+    --info-soft: #241547;
+    --info-line: #432b7d;
+    --info-fg: #cdbcff;
 
     --warn: #fbbf24;
-    --warn-soft: #3b2606;
-    --warn-line: #78350f;
+    --warn-soft: #3a2606;
+    --warn-line: #7a4f0c;
     --warn-fg: #fcd34d;
+
+    --wash-1: rgba(255, 106, 77, 0.13);
+    --wash-2: rgba(74, 222, 159, 0.08);
+    --wash-3: rgba(179, 155, 255, 0.09);
 
     color-scheme: dark;
   }
 }
 
 .dark {
-  --bg: #12100f;
-  --surface: #1c1917;
-  --surface-2: #262220;
-  --fg: #f5f5f4;
-  --fg-muted: #a8a29e;
-  --fg-subtle: #78716c;
-  --line: #332e2b;
-  --line-strong: #44403c;
+  --bg: #17110e;
+  --surface: #221a16;
+  --surface-2: #2e231e;
+  --fg: #fbf3ee;
+  --fg-muted: #c0a99d;
+  --fg-subtle: #9b8478;
+  --line: #3a2c25;
+  --line-strong: #4d3b32;
 
-  --brand: #e11d48;
-  --brand-hover: #f43f5e;
-  --brand-fg: #ffffff;
+  --brand: #ff6a4d;
+  --brand-hover: #ff8367;
+  --brand-fg: #2b1006;
 
-  --danger: #fb7185;
-  --danger-soft: #4c0519;
-  --danger-line: #881337;
-  --danger-fg: #fda4af;
+  --danger: #ff8a75;
+  --danger-soft: #3d1109;
+  --danger-line: #7a2415;
+  --danger-fg: #ffb3a3;
 
-  --success: #34d399;
-  --success-soft: #022c22;
-  --success-line: #065f46;
-  --success-fg: #6ee7b7;
+  --success: #4ade9f;
+  --success-soft: #06281d;
+  --success-line: #0d5c42;
+  --success-fg: #7cf0be;
 
-  --info: #a78bfa;
-  --info-soft: #2e1065;
-  --info-line: #4c1d95;
-  --info-fg: #c4b5fd;
+  --info: #b39bff;
+  --info-soft: #241547;
+  --info-line: #432b7d;
+  --info-fg: #cdbcff;
 
   --warn: #fbbf24;
-  --warn-soft: #3b2606;
-  --warn-line: #78350f;
+  --warn-soft: #3a2606;
+  --warn-line: #7a4f0c;
   --warn-fg: #fcd34d;
+
+  --wash-1: rgba(255, 106, 77, 0.13);
+  --wash-2: rgba(74, 222, 159, 0.08);
+  --wash-3: rgba(179, 155, 255, 0.09);
 
   color-scheme: dark;
 }
@@ -153,7 +169,14 @@
 }
 
 body {
-  background: var(--bg);
+  /* Three soft washes over the base colour, pinned so they don't slide around
+     as the page scrolls. */
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(90ch 50ch at 8% -12%, var(--wash-1), transparent 62%),
+    radial-gradient(70ch 45ch at 96% 4%, var(--wash-2), transparent 58%),
+    radial-gradient(60ch 40ch at 50% 108%, var(--wash-3), transparent 60%);
+  background-attachment: fixed;
   color: var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-text-size-adjust: 100%;
@@ -161,24 +184,55 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-line bg-surface shadow-sm;
+    @apply rounded-2xl border border-line bg-surface;
+    box-shadow:
+      0 1px 2px rgba(42, 26, 20, 0.04),
+      0 8px 24px -16px rgba(42, 26, 20, 0.18);
+  }
+
+  .dark .card {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 8px 24px -16px rgba(0, 0, 0, 0.6);
   }
 
   .btn,
   .btn-primary,
   .btn-secondary,
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition
-           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand
-           disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  /* A little lift and press, so tapping feels like pressing something. */
   .btn-primary {
-    @apply bg-brand text-brand-fg hover:bg-brand-hover;
+    @apply bg-brand text-brand-fg;
+    background-image: linear-gradient(180deg, var(--brand), color-mix(in oklab, var(--brand) 88%, black));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 6px 16px -8px color-mix(in oklab, var(--brand) 70%, transparent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    @apply -translate-y-px;
+    background-image: linear-gradient(180deg, var(--brand-hover), color-mix(in oklab, var(--brand-hover) 88%, black));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 10px 22px -10px color-mix(in oklab, var(--brand) 75%, transparent);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    @apply translate-y-0;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
   }
 
   .btn-secondary {
-    @apply border border-line-strong bg-surface text-fg hover:bg-surface-2;
+    @apply border border-line-strong bg-surface text-fg hover:-translate-y-px hover:border-brand hover:text-brand;
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    @apply translate-y-0;
   }
 
   .btn-ghost {
@@ -187,7 +241,8 @@ body {
 
   .field {
     @apply w-full rounded-xl border border-line-strong bg-surface px-3.5 py-2.5 text-base text-fg
-           placeholder:text-fg-subtle focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none;
+           transition placeholder:text-fg-subtle focus:border-brand focus:ring-4
+           focus:ring-brand/15 focus:outline-none;
   }
 
   .label {
@@ -196,5 +251,23 @@ body {
 
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset;
+  }
+
+  /* Cards that are links: a gentle rise on hover. */
+  .lift {
+    @apply transition duration-150 hover:-translate-y-0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .btn-primary:hover:not(:disabled),
+  .btn-secondary:hover:not(:disabled),
+  .lift:hover {
+    transform: none;
   }
 }
