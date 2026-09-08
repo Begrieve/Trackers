@@ -14,11 +14,11 @@ export function AppShell({
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b border-line bg-surface/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <Link href="/" className="flex min-w-0 items-center gap-2 font-bold text-fg">
+          <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-fg">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-hover text-base shadow-sm">
               🥬
             </span>
-            <span className="truncate max-sm:sr-only">Kimchi Ledger</span>
+            <span className="sr-only">Kimchi Ledger</span>
           </Link>
 
           <TopNav />

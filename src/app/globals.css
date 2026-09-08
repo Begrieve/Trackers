@@ -4,7 +4,7 @@
    .system falls back to the device setting. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Warm kitchen palette. Brand red is picked to clear 4.5:1 against white text
+/* Warm cream in light, neutral gray in dark. Brand red is picked to clear 4.5:1 against white text
    at button size — the app is about money, so nothing decorative is allowed to
    make a figure harder to read. */
 :root {
@@ -51,14 +51,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --bg: #17110e;
-    --surface: #221a16;
-    --surface-2: #2e231e;
-    --fg: #fbf3ee;
-    --fg-muted: #c0a99d;
-    --fg-subtle: #9b8478;
-    --line: #3a2c25;
-    --line-strong: #4d3b32;
+    --bg: #0f1011;
+    --surface: #18181b;
+    --surface-2: #232328;
+    --fg: #f4f4f5;
+    --fg-muted: #a9a9b4;
+    --fg-subtle: #7d7d89;
+    --line: #2c2c31;
+    --line-strong: #3f3f46;
 
     --brand: #ff6a4d;
     --brand-hover: #ff8367;
@@ -84,23 +84,23 @@
     --warn-line: #7a4f0c;
     --warn-fg: #fcd34d;
 
-    --wash-1: rgba(255, 106, 77, 0.13);
-    --wash-2: rgba(74, 222, 159, 0.08);
-    --wash-3: rgba(179, 155, 255, 0.09);
+    --wash-1: rgba(255, 106, 77, 0.07);
+    --wash-2: rgba(120, 170, 255, 0.05);
+    --wash-3: rgba(179, 155, 255, 0.05);
 
     color-scheme: dark;
   }
 }
 
 .dark {
-  --bg: #17110e;
-  --surface: #221a16;
-  --surface-2: #2e231e;
-  --fg: #fbf3ee;
-  --fg-muted: #c0a99d;
-  --fg-subtle: #9b8478;
-  --line: #3a2c25;
-  --line-strong: #4d3b32;
+  --bg: #0f1011;
+  --surface: #18181b;
+  --surface-2: #232328;
+  --fg: #f4f4f5;
+  --fg-muted: #a9a9b4;
+  --fg-subtle: #7d7d89;
+  --line: #2c2c31;
+  --line-strong: #3f3f46;
 
   --brand: #ff6a4d;
   --brand-hover: #ff8367;
@@ -126,9 +126,9 @@
   --warn-line: #7a4f0c;
   --warn-fg: #fcd34d;
 
-  --wash-1: rgba(255, 106, 77, 0.13);
-  --wash-2: rgba(74, 222, 159, 0.08);
-  --wash-3: rgba(179, 155, 255, 0.09);
+  --wash-1: rgba(255, 106, 77, 0.07);
+  --wash-2: rgba(120, 170, 255, 0.05);
+  --wash-3: rgba(179, 155, 255, 0.05);
 
   color-scheme: dark;
 }
