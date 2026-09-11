@@ -21,7 +21,8 @@ export default async function NewBatchPage() {
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-fg">Record a batch</h1>
         <p className="text-sm text-fg-muted">
-          It gets a code like B-260907-1 so you can trace a jar back here later.
+          It gets a code like B-260907-1 so you can trace a jar back here later. Fill in what you
+          know now — the jar count can wait until it&apos;s packed, and everything stays editable.
         </p>
       </div>
 

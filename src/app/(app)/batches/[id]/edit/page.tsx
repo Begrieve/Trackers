@@ -29,7 +29,8 @@ export default async function EditBatchPage({ params }: { params: Promise<{ id: 
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-fg">Edit batch</h1>
         <p className="text-sm text-fg-muted">
-          The code {batch.code} stays the same, so anything already traced to it stays traced.
+          Change the details, costs or jar counts as often as you need. The code {batch.code} stays
+          the same, so anything already traced to it stays traced.
         </p>
       </div>
 

@@ -51,13 +51,19 @@ Cancelled orders release their claim on stock.
 ### Recording the yield afterwards
 
 A cook can be logged before it's packed. Yield varies from batch to batch and isn't
-knowable up front, so jar counts are optional at first: save the batch with its costs
-on the day it's made, then **Record the yield** once you know how many jars came out.
+knowable up front, so the form runs in the order you actually learn things — details
+first, then cost, then the jar counts last — and the counts are optional: save the
+batch on the day it's made, then **Record the yield** once you know how many jars came
+out.
 
-Until then the batch is listed with its code but counts as no stock, and it has no
-cost per jar — $48 over 19 jars is $2.53 each, and that figure simply doesn't exist
-before the 19 is known. The Batches page names any batch still waiting on its yield,
-so a cook can't quietly go uncounted.
+Until the yield is in, the batch is listed with its code but counts as no stock, and it
+has no cost per jar — $48 over 19 jars is $2.53 each, and that figure simply doesn't
+exist before the 19 is known. The Batches page names any batch still waiting on its
+yield, so a cook can't quietly go uncounted.
+
+Nothing is locked in. Details, costs and jar counts on an existing batch can be changed
+as often as you like, and the batch keeps its code so anything already traced to it
+stays traced.
 
 ### Batch codes and tracing a complaint
 

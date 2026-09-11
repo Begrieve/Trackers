@@ -83,6 +83,106 @@ export function BatchForm({
 
   return (
     <form action={formAction} className="space-y-6">
+      <section className="card space-y-4 p-4">
+        <h2 className="font-bold text-fg">Details</h2>
+
+        <div>
+          <label className="label" htmlFor="label">
+            Name (optional)
+          </label>
+          <input
+            id="label"
+            name="label"
+            className="field"
+            defaultValue={initial?.label ?? ""}
+            placeholder="Autumn napa, extra spicy"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="madeOn">
+              Made on
+            </label>
+            <input
+              id="madeOn"
+              name="madeOn"
+              type="date"
+              className="field"
+              defaultValue={initial ? toDateInputValue(initial.madeOn) : defaultMadeOn}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="readyOn">
+              Ready on (optional)
+            </label>
+            <input
+              id="readyOn"
+              name="readyOn"
+              type="date"
+              className="field"
+              defaultValue={initial?.readyOn ? toDateInputValue(initial.readyOn) : ""}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="label" htmlFor="notes">
+            Notes (optional)
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows={2}
+            className="field"
+            defaultValue={initial?.notes ?? ""}
+            placeholder="Salt ratio, cabbage source, how it tasted…"
+          />
+        </div>
+      </section>
+
+      <section className="card p-4">
+        <h2 className="mb-1 font-bold text-fg">What did it cost to make?</h2>
+        <p className="mb-3 text-sm text-fg-muted">
+          Optional, but it&apos;s what turns Reports into profit rather than takings.
+        </p>
+
+        <ul className="space-y-2">
+          {initialCostRows.map((row, index) => (
+            <li key={`${row.label}-${index}`} className="flex gap-2">
+              <input
+                name="costLabel"
+                defaultValue={row.label}
+                aria-label={`Cost ${index + 1} description`}
+                className="field min-w-0 flex-1"
+              />
+              <input
+                name="costAmount"
+                inputMode="decimal"
+                placeholder="0.00"
+                aria-label={`Cost ${index + 1} amount`}
+                value={costs[index]}
+                onChange={(e) =>
+                  setCosts((prev) => prev.map((c, i) => (i === index ? e.target.value : c)))
+                }
+                className="field w-28"
+              />
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+          <span className="text-sm font-semibold text-fg-muted">Batch cost</span>
+          <span className="text-xl font-bold tabular-nums text-fg">{formatMoney(totalCost)}</span>
+        </div>
+
+        {totalCost > 0 && totalJars > 0 ? (
+          <p className="mt-1 text-right text-sm text-fg-muted">
+            {formatMoney(perJar)} per jar across {totalJars} {totalJars === 1 ? "jar" : "jars"}
+          </p>
+        ) : null}
+      </section>
+
       <section className="card p-4">
         <h2 className="mb-1 font-bold text-fg">How many jars did it make?</h2>
         <p className="mb-3 text-sm text-fg-muted">
@@ -154,107 +254,13 @@ export function BatchForm({
         </div>
       </section>
 
-      <section className="card p-4">
-        <h2 className="mb-1 font-bold text-fg">What did it cost to make?</h2>
-        <p className="mb-3 text-sm text-fg-muted">
-          Optional, but it&apos;s what turns Reports into profit rather than takings.
-        </p>
-
-        <ul className="space-y-2">
-          {initialCostRows.map((row, index) => (
-            <li key={`${row.label}-${index}`} className="flex gap-2">
-              <input
-                name="costLabel"
-                defaultValue={row.label}
-                aria-label={`Cost ${index + 1} description`}
-                className="field min-w-0 flex-1"
-              />
-              <input
-                name="costAmount"
-                inputMode="decimal"
-                placeholder="0.00"
-                aria-label={`Cost ${index + 1} amount`}
-                value={costs[index]}
-                onChange={(e) =>
-                  setCosts((prev) => prev.map((c, i) => (i === index ? e.target.value : c)))
-                }
-                className="field w-28"
-              />
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-          <span className="text-sm font-semibold text-fg-muted">Batch cost</span>
-          <span className="text-xl font-bold tabular-nums text-fg">{formatMoney(totalCost)}</span>
-        </div>
-
-        {totalCost > 0 && totalJars > 0 ? (
-          <p className="mt-1 text-right text-sm text-fg-muted">
-            {formatMoney(perJar)} per jar across {totalJars} {totalJars === 1 ? "jar" : "jars"}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="card space-y-4 p-4">
-        <h2 className="font-bold text-fg">Details</h2>
-
-        <div>
-          <label className="label" htmlFor="label">
-            Name (optional)
-          </label>
-          <input
-            id="label"
-            name="label"
-            className="field"
-            defaultValue={initial?.label ?? ""}
-            placeholder="Autumn napa, extra spicy"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label" htmlFor="madeOn">
-              Made on
-            </label>
-            <input
-              id="madeOn"
-              name="madeOn"
-              type="date"
-              className="field"
-              defaultValue={initial ? toDateInputValue(initial.madeOn) : defaultMadeOn}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="readyOn">
-              Ready on (optional)
-            </label>
-            <input
-              id="readyOn"
-              name="readyOn"
-              type="date"
-              className="field"
-              defaultValue={initial?.readyOn ? toDateInputValue(initial.readyOn) : ""}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="label" htmlFor="notes">
-            Notes (optional)
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            rows={2}
-            className="field"
-            defaultValue={initial?.notes ?? ""}
-            placeholder="Salt ratio, cabbage source, how it tasted…"
-          />
-        </div>
-      </section>
-
       {initial ? <input type="hidden" name="id" value={initial.id} /> : null}
+
+      <p className="text-sm text-fg-muted">
+        {initial
+          ? "Everything here can be changed as often as you like. The batch keeps its code, so anything already traced to it stays traced."
+          : "Nothing here is final — you can come back and change the details, costs and jar counts on this batch at any time."}
+      </p>
 
       {state.error ? (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
