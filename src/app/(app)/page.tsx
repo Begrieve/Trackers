@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { prisma } from "@/lib/db";
 import { getOrders } from "@/lib/queries";
 import { bucketOf, orderMath, rollUp } from "@/lib/ledger";
-import { formatMoney } from "@/lib/money";
+import { stockByProduct } from "@/lib/stock";
+import { formatDate, formatMoney } from "@/lib/money";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { readyCount } from "@/lib/readiness";
@@ -9,9 +11,42 @@ import { readyCount } from "@/lib/readiness";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const orders = await getOrders();
+  const [orders, batches] = await Promise.all([
+    getOrders(),
+    prisma.batch.findMany({
+      include: { items: true },
+      orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
+    }),
+  ]);
+
   const totals = rollUp(orders);
   const ready = readyCount(orders);
+
+  const stock = stockByProduct(
+    batches.flatMap((b) => b.items.map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity }))),
+    orders.flatMap((order) =>
+      order.items.map((i) => ({
+        productId: i.productId,
+        name: i.name,
+        quantity: i.quantity,
+        batchId: i.batchId,
+        status: order.status,
+      })),
+    ),
+  );
+
+  const jars = {
+    onHand: stock.reduce((sum, r) => sum + r.onHand, 0),
+    spare: stock.reduce((sum, r) => sum + r.spare, 0),
+    promised: stock.reduce((sum, r) => sum + r.committed, 0),
+    short: stock.reduce((sum, r) => sum + r.short, 0),
+  };
+
+  // Only the products actually worth acting on: something to cook, or jars free
+  // to sell.
+  const needsAttention = stock.filter((row) => row.short > 0 || row.spare > 0).slice(0, 5);
+  const awaitingYield = batches.filter((b) => b.items.length === 0);
+  const latest = batches[0];
 
   const withMath = orders.map((order) => ({ order, math: orderMath(order) }));
   const owesMoney = withMath.filter(({ order, math }) => bucketOf(order, math) === "UNPAID_RECEIVABLE");
@@ -73,6 +108,85 @@ export default async function DashboardPage() {
           href="/orders?filter=ready"
         />
         <StatCard label="Customer credit" value={formatMoney(totals.credit)} hint="Overpayments on file" />
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Jars and batches"
+          subtitle={
+            latest
+              ? `Last cook ${latest.code} · ${formatDate(latest.madeOn)}`
+              : "No batches recorded yet"
+          }
+          action={
+            <Link href="/batches" className="text-sm font-semibold text-brand hover:underline">
+              All batches →
+            </Link>
+          }
+        />
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            label="On hand"
+            value={String(jars.onHand)}
+            hint="Made and still held"
+            href="/batches"
+          />
+          <StatCard
+            label="Spare"
+            value={String(jars.spare)}
+            hint="Free to sell"
+            tone={jars.spare > 0 ? "emerald" : "neutral"}
+            href="/batches"
+          />
+          <StatCard
+            label="Promised"
+            value={String(jars.promised)}
+            hint="Claimed by open orders"
+            tone="violet"
+            href="/orders?filter=pending"
+          />
+          <StatCard
+            label="Short"
+            value={String(jars.short)}
+            hint={jars.short > 0 ? "Still to cook" : "Every order covered"}
+            tone={jars.short > 0 ? "rose" : "neutral"}
+            href="/deliveries"
+          />
+        </div>
+
+        {awaitingYield.length > 0 ? (
+          <p className="card mt-3 border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
+            {awaitingYield.length} {awaitingYield.length === 1 ? "batch is" : "batches are"} waiting
+            on a jar count, so {awaitingYield.length === 1 ? "it doesn't" : "they don't"} count as
+            stock yet.{" "}
+            {awaitingYield.map((b, i) => (
+              <span key={b.id}>
+                {i > 0 ? ", " : ""}
+                <Link href={`/batches/${b.id}/edit`} className="font-semibold underline">
+                  {b.code}
+                </Link>
+              </span>
+            ))}
+          </p>
+        ) : null}
+
+        {needsAttention.length > 0 ? (
+          <div className="card mt-3 divide-y divide-line">
+            {needsAttention.map((row) => (
+              <div key={row.productId} className="flex items-center justify-between gap-3 p-3">
+                <p className="min-w-0 truncate text-sm font-medium text-fg">{row.name}</p>
+                <p className="shrink-0 text-sm font-bold tabular-nums">
+                  {row.short > 0 ? (
+                    <span className="text-danger">{row.short} short</span>
+                  ) : (
+                    <span className="text-success">{row.spare} spare</span>
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section>
