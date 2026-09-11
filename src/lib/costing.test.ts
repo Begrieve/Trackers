@@ -93,3 +93,22 @@ test("margin is undefined rather than infinite when nothing was sold", () => {
 test("margin goes negative when a batch costs more than it earns", () => {
   assert.equal(marginPercent(1000, -500), -50);
 });
+
+test("a cook logged before it is packed prices nothing until the yield is entered", () => {
+  // Costs are known on the day; the jar count comes later and varies.
+  const before = unitCosts([{ items: [], costs: [{ amount: 4000 }] }]);
+  assert.equal(before.size, 0, "no per-jar cost can exist without a yield");
+
+  const after = unitCosts([
+    { items: [{ productId: "napa", quantity: 16 }], costs: [{ amount: 4000 }] },
+  ]);
+  assert.equal(after.get("napa")?.perJar, 250, "$40 over the 16 jars it turned out to make");
+});
+
+test("the same spend over a different yield gives a different cost per jar", () => {
+  // The point of recording yield per batch: it varies cook to cook.
+  const lean = unitCosts([{ items: [{ productId: "napa", quantity: 10 }], costs: [{ amount: 4000 }] }]);
+  const heavy = unitCosts([{ items: [{ productId: "napa", quantity: 25 }], costs: [{ amount: 4000 }] }]);
+  assert.equal(lean.get("napa")?.perJar, 400);
+  assert.equal(heavy.get("napa")?.perJar, 160);
+});

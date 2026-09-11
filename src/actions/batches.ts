@@ -52,8 +52,9 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
     String(formData.get("label") ?? "").trim() ||
     `Batch of ${madeOn.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
+  // A cook can be recorded before it is packed: the jar count comes later and
+  // is not knowable up front.
   const lines = readLineItems(formData);
-  if (lines.length === 0) return { error: "Add at least one jar count." };
 
   const products = await prisma.product.findMany({
     where: { id: { in: lines.map((l) => l.productId) } },
@@ -107,7 +108,7 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
   }
 
   revalidateAll(batch!.id);
-  redirect("/batches");
+  redirect(`/batches/${batch!.id}`);
 }
 
 export async function updateBatch(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -119,7 +120,6 @@ export async function updateBatch(_prev: ActionState, formData: FormData): Promi
   if (!existing) return { error: "That batch no longer exists." };
 
   const lines = readLineItems(formData);
-  if (lines.length === 0) return { error: "A batch needs at least one jar count." };
 
   const products = await prisma.product.findMany({
     where: { id: { in: lines.map((l) => l.productId) } },

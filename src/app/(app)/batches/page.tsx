@@ -49,6 +49,7 @@ export default async function BatchesPage() {
   const totalShort = stock.reduce((sum, r) => sum + r.short, 0);
   const totalCommitted = stock.reduce((sum, r) => sum + r.committed, 0);
   const totalUntracked = stock.reduce((sum, r) => sum + r.untracked, 0);
+  const awaitingYield = batches.filter((b) => b.items.length === 0);
 
   return (
     <div className="space-y-8">
@@ -82,6 +83,23 @@ export default async function BatchesPage() {
           tone={totalShort > 0 ? "rose" : "neutral"}
         />
       </section>
+
+      {awaitingYield.length > 0 ? (
+        <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
+          {awaitingYield.length} {awaitingYield.length === 1 ? "batch has" : "batches have"} no
+          yield recorded yet, so {awaitingYield.length === 1 ? "it does" : "they do"} not count as
+          stock.{" "}
+          {awaitingYield.map((b, i) => (
+            <span key={b.id}>
+              {i > 0 ? ", " : ""}
+              <Link href={`/batches/${b.id}/edit`} className="font-semibold underline">
+                {b.code}
+              </Link>
+            </span>
+          ))}
+          .
+        </p>
+      ) : null}
 
       {totalUntracked > 0 ? (
         <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
@@ -163,9 +181,13 @@ export default async function BatchesPage() {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="font-bold tabular-nums text-fg">
-                        {jars} {jars === 1 ? "jar" : "jars"}
-                      </p>
+                      {batch.items.length === 0 ? (
+                        <p className="font-semibold text-warn">Yield not recorded</p>
+                      ) : (
+                        <p className="font-bold tabular-nums text-fg">
+                          {jars} {jars === 1 ? "jar" : "jars"}
+                        </p>
+                      )}
                       {batchTotalCost(batch) > 0 ? (
                         <p className="text-sm tabular-nums text-fg-muted">
                           {formatMoney(batchTotalCost(batch))}
