@@ -18,6 +18,12 @@ The dashboard is built around five questions:
 | Who prepaid and is owed kimchi? | **Prepaid — you owe kimchi**, with jars still to deliver |
 | How much cash will I collect on delivery? | **Owed on delivery**, plus **Cash to collect** for everything owed |
 
+The dashboard also carries a **Jars and batches** panel: on hand, spare, promised and
+short at a glance, the code and date of the last cook, any batch still waiting on its
+jar count, and the products worth acting on. Each figure links to the page that acts on
+it — short goes to the delivery run's make-list, promised to the open orders claiming
+them.
+
 An order can be partly prepaid: the paid portion counts as product you owe, and the
 remainder counts as cash to collect at delivery. Overpayments become customer credit
 rather than silently disappearing.
