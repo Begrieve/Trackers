@@ -73,13 +73,28 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href={`/batches/${batch.id}/edit`} className="btn-secondary">
-          Edit batch
+        <Link
+          href={`/batches/${batch.id}/edit`}
+          className={batch.items.length === 0 ? "btn-primary" : "btn-secondary"}
+        >
+          {batch.items.length === 0 ? "Record the yield" : "Edit batch"}
         </Link>
       </div>
 
       <section className="card p-4">
         <h2 className="mb-3 font-bold text-fg">What it made</h2>
+        {batch.items.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-warn-line bg-warn-soft/40 p-4 text-sm text-warn-fg">
+            <p className="font-semibold">Yield not recorded yet.</p>
+            <p className="mt-1">
+              This cook is logged but not counted as stock until you enter how many jars came out
+              of it.
+            </p>
+            <Link href={`/batches/${batch.id}/edit`} className="btn-primary mt-3">
+              Record the yield
+            </Link>
+          </div>
+        ) : null}
         <ul className="divide-y divide-line">
           {batch.items.map((item) => (
             <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
@@ -88,10 +103,12 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-          <span className="text-sm font-semibold text-fg-muted">Total jars</span>
-          <span className="text-lg font-bold tabular-nums text-fg">{jars}</span>
-        </div>
+        {batch.items.length > 0 ? (
+          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+            <span className="text-sm font-semibold text-fg-muted">Total jars</span>
+            <span className="text-lg font-bold tabular-nums text-fg">{jars}</span>
+          </div>
+        ) : null}
       </section>
 
       {batch.costs.length > 0 ? (

@@ -84,8 +84,11 @@ export function BatchForm({
   return (
     <form action={formAction} className="space-y-6">
       <section className="card p-4">
-        <h2 className="mb-1 font-bold text-fg">How many jars did you make?</h2>
-        <p className="mb-3 text-sm text-fg-muted">Count what came out of this cook.</p>
+        <h2 className="mb-1 font-bold text-fg">How many jars did it make?</h2>
+        <p className="mb-3 text-sm text-fg-muted">
+          Leave these at zero if it isn&apos;t packed yet — the batch is saved either way, and you
+          can record the yield when you know it.
+        </p>
 
         {products.length === 0 ? (
           <p className="text-sm text-fg-muted">
