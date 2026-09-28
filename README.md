@@ -133,21 +133,35 @@ up — even with the site closed, as long as their browser is running.
    and on Render under the service's **Environment** tab.
 3. Generate a random `CRON_SECRET` (e.g. `openssl rand -hex 32`) and set it
    the same way.
-4. Set up a free external scheduler to hit the check endpoint every few
-   minutes — e.g. [cron-job.org](https://cron-job.org) (free): create a job
-   that sends `POST https://<your-app>.onrender.com/api/push/check` with
-   header `X-Cron-Secret: <your CRON_SECRET>` every 5 minutes.
+4. Set up a free external scheduler to hit the check endpoint periodically —
+   e.g. [cron-job.org](https://cron-job.org) (free): create a job that
+   sends `POST https://<your-app>.onrender.com/api/push/check` with header
+   `X-Cron-Secret: <your CRON_SECRET>` every 15 minutes.
+
+   **Pick this interval carefully on Render's free tier**: each ping keeps
+   the service awake, and Render's free plan only grants 750 instance-hours
+   per workspace per month (~730 hours = running 24/7 the whole month). A
+   5-minute interval pings often enough to basically never let the service
+   sleep, which can burn through that allowance before the month is up. 15
+   minutes is a reasonable middle ground — it sits right at Render's own
+   15-minute idle-sleep threshold, so it won't perfectly guarantee zero
+   sleep cycles, but it cuts instance-hour usage substantially versus 5
+   minutes while keeping alerts reasonably prompt. Drop to 10 minutes for a
+   safer margin against sleep, or go to a paid Render plan (no sleep, no
+   instance-hour cap) if you want both zero delay and zero risk of hitting
+   the cap.
 
 ### Why an external scheduler, not just a timer in the app
 
-The app *does* also poll internally every 5 minutes on its own — but
-Render's free tier suspends the whole process after 15 minutes with no
-incoming HTTP traffic, which stops that timer along with everything else.
-The external scheduler both wakes the app back up and reliably triggers the
-check, regardless of Render's sleep behavior. On a paid Render plan (no
-sleep) the external scheduler is optional but still a good redundancy.
+The app *does* also poll internally on the same schedule as the external
+check — but Render's free tier suspends the whole process after 15 minutes
+with no incoming HTTP traffic, which stops that timer along with
+everything else. The external scheduler both wakes the app back up and
+reliably triggers the check, regardless of Render's sleep behavior. On a
+paid Render plan (no sleep) the external scheduler is optional but still a
+good redundancy.
 
-### Two things worth knowing
+### Three things worth knowing
 
 - **iPhone/iPad**: Apple only allows web push for sites added to the Home
   Screen (Share → Add to Home Screen), not for Safari tabs directly. This
@@ -160,6 +174,11 @@ sleep) the external scheduler is optional but still a good redundancy.
   For durable subscriptions, either move to a Render plan with a
   [persistent disk](https://render.com/docs/disks), or swap the file
   storage in `server/lib/push.js` for a small external database.
+- **Watch your Render free-tier instance-hours**: the external scheduler
+  keeping the app awake to check for earthquakes counts against Render's
+  750 free instance-hours/workspace/month. Render emails a warning around
+  80% usage. If you get that warning, either slow the scheduler down
+  further (see above) or upgrade to a paid plan.
 
 ## Customizing
 
