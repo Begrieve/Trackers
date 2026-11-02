@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { buildReport, parseRange, PRESETS, type PresetKey } from "@/lib/reports";
 import { formatDate, formatMoney, toDateInputValue } from "@/lib/money";
@@ -16,13 +16,14 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ preset?: string; from?: string; to?: string }>;
 }) {
+  const db = await getDb();
   const params = await searchParams;
   const preset: PresetKey = isPreset(params.preset) ? params.preset : "this-month";
   const range = parseRange(params.from, params.to, preset);
 
   const [orders, batches] = await Promise.all([
     getOrders(),
-    prisma.batch.findMany({
+    db.batch.findMany({
       select: {
         madeOn: true,
         items: { select: { productId: true, quantity: true } },

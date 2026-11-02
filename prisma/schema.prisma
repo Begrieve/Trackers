@@ -12,6 +12,8 @@ model User {
   email        String   @unique
   name         String
   passwordHash String
+  /** Signs in to the demo's own tables, never the real ledger. */
+  isDemo       Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   orders   Order[]

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getOrders } from "@/lib/queries";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { rollUp } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { EmptyState } from "@/components/ui";
@@ -9,8 +9,9 @@ import { AddCustomer } from "./customer-form";
 export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
+  const db = await getDb();
   const [customers, orders] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { name: "asc" } }),
+    db.customer.findMany({ orderBy: { name: "asc" } }),
     getOrders(),
   ]);
 

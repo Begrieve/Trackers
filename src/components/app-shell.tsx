@@ -2,16 +2,18 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import { ThemeToggle } from "./theme-toggle";
 import { BottomNav, TopNav } from "./nav";
+import { DemoBanner } from "./demo-banner";
 
 export function AppShell({
   user,
   children,
 }: {
-  user: { name: string };
+  user: { name: string; demo?: boolean };
   children: React.ReactNode;
 }) {
   return (
     <div className="min-h-dvh">
+      {user.demo ? <DemoBanner /> : null}
       <header className="sticky top-0 z-20 border-b border-line bg-surface/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-fg">

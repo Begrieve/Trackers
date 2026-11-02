@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import type { FullOrder } from "@/lib/ledger";
 
 const include = {
@@ -8,7 +8,8 @@ const include = {
 } as const;
 
 export async function getOrders(where: Record<string, unknown> = {}): Promise<FullOrder[]> {
-  return prisma.order.findMany({
+  const db = await getDb();
+  return db.order.findMany({
     where,
     include,
     orderBy: [{ orderedAt: "desc" }, { createdAt: "desc" }],
@@ -16,5 +17,6 @@ export async function getOrders(where: Record<string, unknown> = {}): Promise<Fu
 }
 
 export async function getOrder(id: string): Promise<FullOrder | null> {
-  return prisma.order.findUnique({ where: { id }, include });
+  const db = await getDb();
+  return db.order.findUnique({ where: { id }, include });
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { formatDate, formatMoney } from "@/lib/money";
 import { batchJars, batchTotalCost } from "@/lib/costing";
 import { EmptyState, SectionHeading } from "@/components/ui";
@@ -10,9 +10,10 @@ import { FillOrders, type FillableOrder } from "./fill-orders";
 export const dynamic = "force-dynamic";
 
 export default async function BatchPage({ params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
 
-  const batch = await prisma.batch.findUnique({
+  const batch = await db.batch.findUnique({
     where: { id },
     include: {
       items: { orderBy: { name: "asc" } },
@@ -30,7 +31,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
 
   // Orders that could plausibly have come from this batch: open, or delivered
   // recently, and containing at least one product the batch actually made.
-  const candidates = await prisma.order.findMany({
+  const candidates = await db.order.findMany({
     where: {
       status: { not: "CANCELLED" },
       items: { some: { productId: { in: madeProductIds } } },

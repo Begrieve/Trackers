@@ -146,6 +146,28 @@ about right now:
 
 The page prints cleanly: the header, tab bar, and buttons drop out, leaving the sheet.
 
+## The demo account
+
+Setting `SEED_DEMO_EMAIL`, `SEED_DEMO_NAME` and `SEED_DEMO_PASSWORD` adds a second
+login you can hand to someone without exposing the real ledger. They can add, edit and
+delete anything.
+
+**Where its data lives.** The demo reads and writes a *separate set of tables*. By
+default that's a `demo` schema on the same database, which costs nothing and needs no
+provisioning; set `DEMO_DATABASE_URL` to put it on a different database entirely. The
+build migrates both with the same schema and fills the demo with sample data — people,
+orders at every stage, two cooks, money part-collected.
+
+**How the separation is enforced.** There is no default database export in the code.
+Every page and action resolves its connection through `getDb()`, which reads the demo
+flag off the signed session — so the flag can't be forged by a query string or form
+field, and a missed call site is a compile error rather than a silent leak. If the demo
+URL ever resolved to the real tables, the app and the build both refuse to start rather
+than write to the wrong place.
+
+**Resetting.** The demo carries a banner with **Reset demo data**, which rebuilds the
+sample data from scratch. Only a demo session can call it.
+
 ## Fixing mistakes
 
 Nothing is write-once. A wrong entry can be corrected in place rather than deleted and

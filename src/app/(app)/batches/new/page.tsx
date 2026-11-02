@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { toDateInputValue } from "@/lib/money";
 import { BatchForm } from "@/components/batch-form";
 import { createBatch } from "@/actions/batches";
@@ -7,7 +7,8 @@ import { createBatch } from "@/actions/batches";
 export const dynamic = "force-dynamic";
 
 export default async function NewBatchPage() {
-  const products = await prisma.product.findMany({
+  const db = await getDb();
+  const products = await db.product.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
     select: { id: true, name: true, unitLabel: true },

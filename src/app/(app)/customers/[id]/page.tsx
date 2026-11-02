@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { rollUp } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
@@ -12,8 +12,9 @@ import { EditCustomer } from "./edit-customer";
 export const dynamic = "force-dynamic";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
-  const customer = await prisma.customer.findUnique({ where: { id } });
+  const customer = await db.customer.findUnique({ where: { id } });
   if (!customer) notFound();
 
   const orders = await getOrders({ customerId: id });

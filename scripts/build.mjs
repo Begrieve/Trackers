@@ -72,4 +72,10 @@ const run = (command, args, extraEnv) => {
 run("npx", ["prisma", "generate"]);
 run("npx", ["prisma", "migrate", "deploy"], { DATABASE_URL: migration.value });
 run("npx", ["tsx", "prisma/seed.ts"], { DATABASE_URL: migration.value });
+
+// The demo keeps its own tables: same migrations, separate data. Deciding
+// which database that is lives in TypeScript with the app, so this script
+// hands the whole step to tsx rather than duplicating the rule here.
+run("npx", ["tsx", "prisma/setup-demo.ts"], { DATABASE_URL: migration.value });
+
 run("npx", ["next", "build"], { DATABASE_URL: runtime.value });

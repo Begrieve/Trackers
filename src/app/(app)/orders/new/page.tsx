@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { NewOrderForm } from "./new-order-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewOrderPage() {
+  const db = await getDb();
   const [customers, products] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.product.findMany({
+    db.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.product.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, unitLabel: true, unitPrice: true },

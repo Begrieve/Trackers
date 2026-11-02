@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { stockByProduct } from "@/lib/stock";
 import { formatDate, formatMoney } from "@/lib/money";
 import { batchJars, batchTotalCost, unitCosts } from "@/lib/costing";
@@ -8,13 +8,14 @@ import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function BatchesPage() {
+  const db = await getDb();
   const [batches, batchItems, orderItems] = await Promise.all([
-    prisma.batch.findMany({
+    db.batch.findMany({
       include: { items: { orderBy: { name: "asc" } }, costs: true },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
-    prisma.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
-    prisma.orderItem.findMany({
+    db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
+    db.orderItem.findMany({
       select: {
         productId: true,
         name: true,

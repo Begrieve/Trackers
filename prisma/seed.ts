@@ -1,17 +1,30 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { DEMO_USER_ID } from "../src/lib/demo";
 
 const prisma = new PrismaClient();
 
-async function upsertUser(email?: string, name?: string, password?: string) {
+async function upsertUser(
+  email?: string,
+  name?: string,
+  password?: string,
+  options: { id?: string; isDemo?: boolean } = {},
+) {
   if (!email || !password) return null;
   const passwordHash = await bcrypt.hash(password, 12);
+  const isDemo = options.isDemo ?? false;
   const user = await prisma.user.upsert({
     where: { email: email.toLowerCase() },
-    update: { name: name ?? email, passwordHash },
-    create: { email: email.toLowerCase(), name: name ?? email, passwordHash },
+    update: { name: name ?? email, passwordHash, isDemo },
+    create: {
+      ...(options.id ? { id: options.id } : {}),
+      email: email.toLowerCase(),
+      name: name ?? email,
+      passwordHash,
+      isDemo,
+    },
   });
-  console.log(`account ready: ${user.email}`);
+  console.log(`account ready: ${user.email}${isDemo ? " (demo)" : ""}`);
   return user;
 }
 
@@ -25,6 +38,15 @@ async function main() {
     process.env.SEED_PARTNER_EMAIL,
     process.env.SEED_PARTNER_NAME,
     process.env.SEED_PARTNER_PASSWORD,
+  );
+
+  // The demo account signs in here but reads and writes its own tables, so it
+  // carries a fixed id that exists in both.
+  await upsertUser(
+    process.env.SEED_DEMO_EMAIL,
+    process.env.SEED_DEMO_NAME ?? "Demo",
+    process.env.SEED_DEMO_PASSWORD,
+    { id: DEMO_USER_ID, isDemo: true },
   );
 
   if (!owner && !partner) {
