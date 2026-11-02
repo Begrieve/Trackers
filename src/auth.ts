@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { mainDb } from "@/lib/db";
 import { authConfig } from "@/auth.config";
 
 const credentialsSchema = z.object({
@@ -24,7 +24,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
 
         const email = parsed.data.email.trim().toLowerCase();
-        const user = await prisma.user.findUnique({ where: { email } });
+        // Accounts always live in the real ledger, demo ones included.
+        const user = await mainDb().user.findUnique({ where: { email } });
 
         if (!user) {
           await bcrypt.compare(parsed.data.password, DUMMY_HASH);
@@ -34,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!ok) return null;
 
-        return { id: user.id, email: user.email, name: user.name };
+        return { id: user.id, email: user.email, name: user.name, demo: user.isDemo };
       },
     }),
   ],
@@ -47,5 +48,6 @@ export async function requireUser() {
     id: session.user.id,
     name: session.user.name ?? "",
     email: session.user.email ?? "",
+    demo: session.user.demo === true,
   };
 }

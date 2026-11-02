@@ -7,21 +7,22 @@ import { deleteOrder, deletePayment, markPaidInFull, setOrderStatus, updateOrder
 import { PaymentForm } from "./payment-form";
 import { methodLabel } from "@/lib/payment-methods";
 import { readinessOf } from "@/lib/readiness";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { ItemBatchPicker, OrderBatchPicker } from "./item-batch";
 import { EditItems, EditPayment } from "./corrections";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
   const [order, batches, products] = await Promise.all([
     getOrder(id),
-    prisma.batch.findMany({
+    db.batch.findMany({
       orderBy: [{ madeOn: "desc" }],
       select: { id: true, code: true, label: true },
     }),
-    prisma.product.findMany({
+    db.product.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, unitLabel: true, unitPrice: true },

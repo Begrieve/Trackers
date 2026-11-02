@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { buildRun } from "@/lib/deliveries";
 import { stockByProduct } from "@/lib/stock";
@@ -10,9 +10,10 @@ import { setOrderStatus } from "@/actions/orders";
 export const dynamic = "force-dynamic";
 
 export default async function DeliveriesPage() {
+  const db = await getDb();
   const [orders, batchItems] = await Promise.all([
     getOrders(),
-    prisma.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
+    db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
   ]);
 
   const stock = stockByProduct(

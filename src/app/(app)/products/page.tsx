@@ -1,11 +1,12 @@
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { EmptyState } from "@/components/ui";
 import { AddProduct, EditProduct } from "./product-forms";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  const products = await prisma.product.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] });
+  const db = await getDb();
+  const products = await db.product.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] });
 
   return (
     <div className="space-y-5">

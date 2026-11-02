@@ -6,5 +6,9 @@ export default async function AuthedLayout({ children }: { children: React.React
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  return <AppShell user={{ name: session.user.name ?? "" }}>{children}</AppShell>;
+  return (
+    <AppShell user={{ name: session.user.name ?? "", demo: session.user.demo === true }}>
+      {children}
+    </AppShell>
+  );
 }

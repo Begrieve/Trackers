@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import { parseMoney } from "@/lib/money";
 import type { ActionState } from "./customers";
@@ -14,6 +14,7 @@ const productSchema = z.object({
 });
 
 export async function createProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const parsed = productSchema.safeParse({
     name: String(formData.get("name") ?? ""),
@@ -30,7 +31,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
   }
   if (unitPrice < 0) return { error: "Price can't be negative" };
 
-  await prisma.product.create({
+  await db.product.create({
     data: { name: parsed.data.name, unitLabel: parsed.data.unitLabel, unitPrice },
   });
 
@@ -40,6 +41,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function updateProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   const parsed = productSchema.safeParse({
@@ -57,7 +59,7 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
     return { error: "Enter a price like 25.00" };
   }
 
-  await prisma.product.update({
+  await db.product.update({
     where: { id },
     data: {
       name: parsed.data.name,
@@ -73,12 +75,13 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function toggleProduct(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  const product = await prisma.product.findUnique({ where: { id } });
+  const product = await db.product.findUnique({ where: { id } });
   if (!product) return;
-  await prisma.product.update({ where: { id }, data: { active: !product.active } });
+  await db.product.update({ where: { id }, data: { active: !product.active } });
   revalidatePath("/products");
   revalidatePath("/orders/new");
 }

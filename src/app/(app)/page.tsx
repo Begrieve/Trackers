@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { bucketOf, orderMath, rollUp } from "@/lib/ledger";
 import { stockByProduct } from "@/lib/stock";
@@ -11,9 +11,10 @@ import { readyCount } from "@/lib/readiness";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const db = await getDb();
   const [orders, batches] = await Promise.all([
     getOrders(),
-    prisma.batch.findMany({
+    db.batch.findMany({
       include: { items: true },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),

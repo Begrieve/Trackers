@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import type { ActionState } from "./customers";
 import { parseMoney } from "@/lib/money";
@@ -45,6 +45,7 @@ function revalidateAll(batchId?: string) {
 }
 
 export async function createBatch(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   const user = await requireUser();
 
   const madeOn = parseDate(formData.get("madeOn")) ?? new Date();
@@ -56,7 +57,7 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
   // is not knowable up front.
   const lines = readLineItems(formData);
 
-  const products = await prisma.product.findMany({
+  const products = await db.product.findMany({
     where: { id: { in: lines.map((l) => l.productId) } },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -91,12 +92,12 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
   // unique index is the arbiter: on a clash, recompute and try again.
   let batch;
   for (let attempt = 0; attempt < 5; attempt++) {
-    const sameDay = await prisma.batch.findMany({
+    const sameDay = await db.batch.findMany({
       where: { code: { startsWith: batchCodePrefix(madeOn) } },
       select: { code: true },
     });
     try {
-      batch = await prisma.batch.create({
+      batch = await db.batch.create({
         data: { ...data, code: nextBatchCode(madeOn, sameDay.map((b) => b.code)) },
       });
       break;
@@ -112,16 +113,17 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function updateBatch(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Missing batch." };
 
-  const existing = await prisma.batch.findUnique({ where: { id }, include: { items: true } });
+  const existing = await db.batch.findUnique({ where: { id }, include: { items: true } });
   if (!existing) return { error: "That batch no longer exists." };
 
   const lines = readLineItems(formData);
 
-  const products = await prisma.product.findMany({
+  const products = await db.product.findMany({
     where: { id: { in: lines.map((l) => l.productId) } },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -139,10 +141,10 @@ export async function updateBatch(_prev: ActionState, formData: FormData): Promi
 
   // Items and costs are replaced wholesale inside one transaction, so a failure
   // part-way cannot leave a batch holding half its old contents.
-  await prisma.$transaction([
-    prisma.batchItem.deleteMany({ where: { batchId: id } }),
-    prisma.batchCost.deleteMany({ where: { batchId: id } }),
-    prisma.batch.update({
+  await db.$transaction([
+    db.batchItem.deleteMany({ where: { batchId: id } }),
+    db.batchCost.deleteMany({ where: { batchId: id } }),
+    db.batch.update({
       where: { id },
       data: {
         label: String(formData.get("label") ?? "").trim() || existing.label,
@@ -165,10 +167,11 @@ export async function updateBatch(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function deleteBatch(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.batch.delete({ where: { id } });
+  await db.batch.delete({ where: { id } });
   revalidateAll();
   redirect("/batches");
 }
@@ -179,18 +182,19 @@ export async function deleteBatch(formData: FormData): Promise<void> {
  * a napa cook.
  */
 export async function fillOrdersFromBatch(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const batchId = String(formData.get("batchId") ?? "");
   const orderIds = formData.getAll("orderId").map(String).filter(Boolean);
   if (!batchId || orderIds.length === 0) return;
 
-  const batch = await prisma.batch.findUnique({
+  const batch = await db.batch.findUnique({
     where: { id: batchId },
     include: { items: { select: { productId: true } } },
   });
   if (!batch) return;
 
-  await prisma.orderItem.updateMany({
+  await db.orderItem.updateMany({
     where: {
       orderId: { in: orderIds },
       productId: { in: batch.items.map((i) => i.productId) },
@@ -204,21 +208,22 @@ export async function fillOrdersFromBatch(formData: FormData): Promise<void> {
 
 /** Attribute every line of one order to a batch, or clear them all. */
 export async function fillOrderFromBatch(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const orderId = String(formData.get("orderId") ?? "");
   const batchId = String(formData.get("batchId") ?? "").trim();
   if (!orderId) return;
 
   if (!batchId) {
-    await prisma.orderItem.updateMany({ where: { orderId }, data: { batchId: null } });
+    await db.orderItem.updateMany({ where: { orderId }, data: { batchId: null } });
   } else {
-    const batch = await prisma.batch.findUnique({
+    const batch = await db.batch.findUnique({
       where: { id: batchId },
       include: { items: { select: { productId: true } } },
     });
     if (!batch) return;
 
-    await prisma.orderItem.updateMany({
+    await db.orderItem.updateMany({
       where: { orderId, productId: { in: batch.items.map((i) => i.productId) } },
       data: { batchId },
     });

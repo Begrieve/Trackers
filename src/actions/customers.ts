@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 
 export type ActionState = { error?: string; ok?: boolean };
@@ -24,12 +24,13 @@ function fields(formData: FormData) {
 }
 
 export async function createCustomer(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const parsed = customerSchema.safeParse(fields(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { name, phone, email, notes } = parsed.data;
-  await prisma.customer.create({
+  await db.customer.create({
     data: {
       name,
       phone: phone || null,
@@ -44,6 +45,7 @@ export async function createCustomer(_prev: ActionState, formData: FormData): Pr
 }
 
 export async function updateCustomer(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   const parsed = customerSchema.safeParse(fields(formData));
@@ -51,7 +53,7 @@ export async function updateCustomer(_prev: ActionState, formData: FormData): Pr
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { name, phone, email, notes } = parsed.data;
-  await prisma.customer.update({
+  await db.customer.update({
     where: { id },
     data: {
       name,
@@ -67,10 +69,11 @@ export async function updateCustomer(_prev: ActionState, formData: FormData): Pr
 }
 
 export async function deleteCustomer(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.customer.delete({ where: { id } });
+  await db.customer.delete({ where: { id } });
   revalidatePath("/customers");
   revalidatePath("/orders");
   revalidatePath("/");

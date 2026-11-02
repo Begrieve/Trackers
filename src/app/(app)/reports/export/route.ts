@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { buildReport, parseRange } from "@/lib/reports";
 import { toDateInputValue } from "@/lib/money";
@@ -14,6 +14,7 @@ function cell(value: string | number) {
 const money = (cents: number) => (cents / 100).toFixed(2);
 
 export async function GET(request: Request) {
+  const db = await getDb();
   const session = await auth();
   if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
 
   const [orders, batches] = await Promise.all([
     getOrders(),
-    prisma.batch.findMany({
+    db.batch.findMany({
       select: {
         madeOn: true,
         items: { select: { productId: true, quantity: true } },

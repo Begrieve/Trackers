@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import { parseMoney } from "@/lib/money";
 import type { ActionState } from "./customers";
@@ -37,6 +37,7 @@ function revalidateAll(orderId?: string) {
 }
 
 export async function createOrder(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   const user = await requireUser();
 
   let customerId = String(formData.get("customerId") ?? "").trim();
@@ -44,14 +45,14 @@ export async function createOrder(_prev: ActionState, formData: FormData): Promi
 
   if (!customerId) {
     if (!newCustomerName) return { error: "Pick a person or type a new name." };
-    const created = await prisma.customer.create({ data: { name: newCustomerName } });
+    const created = await db.customer.create({ data: { name: newCustomerName } });
     customerId = created.id;
   }
 
   const lines = readLineItems(formData);
   if (lines.length === 0) return { error: "Add at least one item with a quantity." };
 
-  const products = await prisma.product.findMany({
+  const products = await db.product.findMany({
     where: { id: { in: lines.map((l) => l.productId) } },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -74,7 +75,7 @@ export async function createOrder(_prev: ActionState, formData: FormData): Promi
   const delivered = formData.get("delivered") === "on";
   const orderedAt = parseDate(formData.get("orderedAt")) ?? new Date();
 
-  const order = await prisma.order.create({
+  const order = await db.order.create({
     data: {
       customerId,
       createdById: user.id,
@@ -115,11 +116,12 @@ export async function createOrder(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function updateOrder(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await prisma.order.update({
+  await db.order.update({
     where: { id },
     data: {
       orderedAt: parseDate(formData.get("orderedAt")) ?? undefined,
@@ -132,12 +134,13 @@ export async function updateOrder(formData: FormData): Promise<void> {
 }
 
 export async function setOrderStatus(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!id || !["PENDING", "DELIVERED", "CANCELLED"].includes(status)) return;
 
-  await prisma.order.update({
+  await db.order.update({
     where: { id },
     data: {
       status: status as "PENDING" | "DELIVERED" | "CANCELLED",
@@ -149,10 +152,11 @@ export async function setOrderStatus(formData: FormData): Promise<void> {
 }
 
 export async function deleteOrder(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.order.delete({ where: { id } });
+  await db.order.delete({ where: { id } });
   revalidateAll();
   redirect("/orders");
 }
@@ -166,6 +170,7 @@ const paymentSchema = z.object({
 });
 
 export async function addPayment(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   const user = await requireUser();
   const parsed = paymentSchema.safeParse({
     orderId: String(formData.get("orderId") ?? ""),
@@ -184,10 +189,10 @@ export async function addPayment(_prev: ActionState, formData: FormData): Promis
   }
   if (amount === 0) return { error: "Amount can't be zero." };
 
-  const order = await prisma.order.findUnique({ where: { id: parsed.data.orderId } });
+  const order = await db.order.findUnique({ where: { id: parsed.data.orderId } });
   if (!order) return { error: "That order no longer exists." };
 
-  await prisma.payment.create({
+  await db.payment.create({
     data: {
       orderId: order.id,
       customerId: order.customerId,
@@ -204,11 +209,12 @@ export async function addPayment(_prev: ActionState, formData: FormData): Promis
 }
 
 export async function markPaidInFull(formData: FormData): Promise<void> {
+  const db = await getDb();
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  const order = await prisma.order.findUnique({
+  const order = await db.order.findUnique({
     where: { id },
     include: { items: true, payments: true },
   });
@@ -219,7 +225,7 @@ export async function markPaidInFull(formData: FormData): Promise<void> {
   const balance = total - paid;
   if (balance <= 0) return;
 
-  await prisma.payment.create({
+  await db.payment.create({
     data: {
       orderId: order.id,
       customerId: order.customerId,
@@ -234,10 +240,11 @@ export async function markPaidInFull(formData: FormData): Promise<void> {
 }
 
 export async function deletePayment(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const id = String(formData.get("paymentId") ?? "");
   if (!id) return;
-  const payment = await prisma.payment.delete({ where: { id } });
+  const payment = await db.payment.delete({ where: { id } });
   revalidateAll(payment.orderId);
 }
 
@@ -250,6 +257,7 @@ const editPaymentSchema = z.object({
 
 /** Correct a payment recorded wrongly — wrong amount, wrong method, wrong day. */
 export async function updatePayment(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const parsed = editPaymentSchema.safeParse({
     paymentId: String(formData.get("paymentId") ?? ""),
@@ -267,10 +275,10 @@ export async function updatePayment(_prev: ActionState, formData: FormData): Pro
   }
   if (amount === 0) return { error: "Amount can't be zero. Remove the payment instead." };
 
-  const payment = await prisma.payment.findUnique({ where: { id: parsed.data.paymentId } });
+  const payment = await db.payment.findUnique({ where: { id: parsed.data.paymentId } });
   if (!payment) return { error: "That payment no longer exists." };
 
-  await prisma.payment.update({
+  await db.payment.update({
     where: { id: payment.id },
     data: {
       amount,
@@ -286,6 +294,7 @@ export async function updatePayment(_prev: ActionState, formData: FormData): Pro
 
 /** Replace an order's line items — fixes a wrong quantity or a wrong product. */
 export async function updateOrderItems(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const db = await getDb();
   await requireUser();
   const orderId = String(formData.get("orderId") ?? "");
   if (!orderId) return { error: "Missing order." };
@@ -293,7 +302,7 @@ export async function updateOrderItems(_prev: ActionState, formData: FormData): 
   const lines = readLineItems(formData);
   if (lines.length === 0) return { error: "An order needs at least one item." };
 
-  const products = await prisma.product.findMany({
+  const products = await db.product.findMany({
     where: { id: { in: lines.map((l) => l.productId) } },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -301,15 +310,15 @@ export async function updateOrderItems(_prev: ActionState, formData: FormData): 
     return { error: "One of those products no longer exists." };
   }
 
-  const existing = await prisma.orderItem.findMany({ where: { orderId } });
+  const existing = await db.orderItem.findMany({ where: { orderId } });
   // Keep the price each line was sold at, and its batch, when that product is
   // still on the order: correcting a quantity must not silently re-price the
   // order at today's list price.
   const previous = new Map(existing.map((item) => [item.productId, item]));
 
-  await prisma.$transaction([
-    prisma.orderItem.deleteMany({ where: { orderId } }),
-    prisma.order.update({
+  await db.$transaction([
+    db.orderItem.deleteMany({ where: { orderId } }),
+    db.order.update({
       where: { id: orderId },
       data: {
         items: {
@@ -335,12 +344,13 @@ export async function updateOrderItems(_prev: ActionState, formData: FormData): 
 
 /** Record which batch an order line was filled from, for traceability. */
 export async function setItemBatch(formData: FormData): Promise<void> {
+  const db = await getDb();
   await requireUser();
   const itemId = String(formData.get("itemId") ?? "");
   const batchId = String(formData.get("batchId") ?? "").trim();
   if (!itemId) return;
 
-  const item = await prisma.orderItem.update({
+  const item = await db.orderItem.update({
     where: { id: itemId },
     data: { batchId: batchId || null },
   });
