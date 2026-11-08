@@ -32,6 +32,7 @@ export async function GET(request: Request) {
         madeOn: true,
         items: { select: { productId: true, quantity: true } },
         costs: { select: { amount: true } },
+        allocations: { select: { productId: true, quantity: true } },
       },
     }),
   ]);
@@ -58,6 +59,8 @@ export async function GET(request: Request) {
     ["Gross profit", money(report.profit)],
     ["Margin %", report.marginPct === null ? "" : report.marginPct],
     ["Jars sold with no recorded cost", report.uncostedJars],
+    ["Jars set aside (kept, given away, lost)", report.setAsideJars],
+    ["Cost of jars set aside", money(report.setAsideCost)],
     [],
     ["By product", "Jars", "Value", "Cost", "Profit"],
     ...report.products.map((p) => [p.name, p.quantity, money(p.revenue), money(p.cost), money(p.profit)]),

@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function BatchesPage() {
   const db = await getDb();
-  const [batches, batchItems, orderItems] = await Promise.all([
+  const [batches, batchItems, orderItems, allocations] = await Promise.all([
     db.batch.findMany({
-      include: { items: { orderBy: { name: "asc" } }, costs: true },
+      include: { items: { orderBy: { name: "asc" } }, costs: true, allocations: true },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
     db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
@@ -24,6 +24,7 @@ export default async function BatchesPage() {
         order: { select: { status: true } },
       },
     }),
+    db.batchAllocation.findMany({ select: { productId: true, name: true, quantity: true } }),
   ]);
 
   const stock = stockByProduct(
@@ -35,6 +36,7 @@ export default async function BatchesPage() {
       batchId: i.batchId,
       status: i.order.status,
     })),
+    allocations,
   );
 
   const costPerJar = unitCosts(
@@ -50,6 +52,7 @@ export default async function BatchesPage() {
   const totalShort = stock.reduce((sum, r) => sum + r.short, 0);
   const totalCommitted = stock.reduce((sum, r) => sum + r.committed, 0);
   const totalUntracked = stock.reduce((sum, r) => sum + r.untracked, 0);
+  const totalAllocated = stock.reduce((sum, r) => sum + r.allocated, 0);
   const awaitingYield = batches.filter((b) => b.items.length === 0);
 
   return (
@@ -76,7 +79,12 @@ export default async function BatchesPage() {
           hint="On orders not yet delivered"
           tone="violet"
         />
-        <StatCard label="Spare" value={String(totalSpare)} hint="On hand, unclaimed" tone="emerald" />
+        <StatCard
+          label="Spare"
+          value={String(totalSpare)}
+          hint={totalAllocated > 0 ? `${totalAllocated} set aside, not counted` : "On hand, unclaimed"}
+          tone="emerald"
+        />
         <StatCard
           label="Short"
           value={String(totalShort)}

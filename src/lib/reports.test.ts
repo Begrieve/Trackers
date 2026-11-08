@@ -230,3 +230,56 @@ test("batch spend counts every cost line of batches made in the period", () => {
   const report = buildReport([], batches, rangeForPreset("this-month", NOW));
   assert.equal(report.batchSpend, 4500);
 });
+
+test("jars set aside are reported with their cost, not folded into margin", () => {
+  const orders = [
+    order({
+      id: "a",
+      customerId: "c1",
+      customerName: "Grace",
+      orderedAt: new Date(2026, 6, 5),
+      items: [["Napa", 2, 2500]],
+    }),
+  ];
+  // 20 jars cooked for $40 => $2.00 each. 3 were kept or given away.
+  const batches = [
+    {
+      madeOn: new Date(2026, 6, 1),
+      items: [{ productId: "Napa", quantity: 20 }],
+      costs: [{ amount: 4000 }],
+      allocations: [{ productId: "Napa", quantity: 3 }],
+    },
+  ];
+
+  const report = buildReport(orders, batches, rangeForPreset("this-month", NOW));
+  assert.equal(report.setAsideJars, 3);
+  assert.equal(report.setAsideCost, 600, "3 jars at $2.00");
+  assert.equal(report.cogs, 400, "only the 2 jars sold");
+  assert.equal(report.profit, 4600, "margin measures what was sold");
+});
+
+test("a batch with nothing set aside reports zero rather than nothing", () => {
+  const report = buildReport(
+    [],
+    [{ madeOn: new Date(2026, 6, 4), items: [{ productId: "p1", quantity: 10 }], costs: [] }],
+    rangeForPreset("this-month", NOW),
+  );
+  assert.equal(report.setAsideJars, 0);
+  assert.equal(report.setAsideCost, 0);
+});
+
+test("jars set aside from an out-of-range batch are not counted this period", () => {
+  const report = buildReport(
+    [],
+    [
+      {
+        madeOn: new Date(2026, 3, 4),
+        items: [{ productId: "p1", quantity: 10 }],
+        costs: [{ amount: 2000 }],
+        allocations: [{ productId: "p1", quantity: 5 }],
+      },
+    ],
+    rangeForPreset("this-month", NOW),
+  );
+  assert.equal(report.setAsideJars, 0);
+});

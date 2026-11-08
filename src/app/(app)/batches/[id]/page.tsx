@@ -6,6 +6,9 @@ import { batchJars, batchTotalCost } from "@/lib/costing";
 import { EmptyState, SectionHeading } from "@/components/ui";
 import { deleteBatch } from "@/actions/batches";
 import { FillOrders, type FillableOrder } from "./fill-orders";
+import { AllocateJars, type Allocatable } from "./allocate";
+import { removeAllocation } from "@/actions/allocations";
+import { ALLOCATION_LABEL } from "@/lib/allocations";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
         include: { order: { include: { customer: true } } },
         orderBy: { name: "asc" },
       },
+      allocations: { orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -56,6 +60,25 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
   const jars = batchJars(batch);
   const cost = batchTotalCost(batch);
   const jarsOut = batch.orderItems.reduce((sum, i) => sum + i.quantity, 0);
+  const setAside = batch.allocations.reduce((sum, a) => sum + a.quantity, 0);
+
+  // What this batch still holds, per product: made, less what orders took and
+  // what was set aside. That is the ceiling on anything further set aside.
+  const allocatable: Allocatable[] = batch.items.map((item) => {
+    const toOrders = batch.orderItems
+      .filter((o) => o.productId === item.productId)
+      .reduce((sum, o) => sum + o.quantity, 0);
+    const aside = batch.allocations
+      .filter((a) => a.productId === item.productId)
+      .reduce((sum, a) => sum + a.quantity, 0);
+    return {
+      productId: item.productId,
+      name: item.name,
+      remaining: Math.max(item.quantity - toOrders - aside, 0),
+    };
+  });
+
+  const unaccounted = allocatable.reduce((sum, r) => sum + r.remaining, 0);
 
   return (
     <div className="space-y-6">
@@ -81,6 +104,64 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
           {batch.items.length === 0 ? "Record the yield" : "Edit batch"}
         </Link>
       </div>
+
+      {batch.items.length > 0 ? (
+        <AllocateJars batchId={batch.id} rows={allocatable} />
+      ) : null}
+
+      <section className="card p-4">
+        <h2 className="mb-3 font-bold text-fg">Where the jars went</h2>
+        <ul className="divide-y divide-line">
+          <li className="flex items-center justify-between gap-3 py-2.5">
+            <span className="text-sm text-fg">To orders</span>
+            <span className="font-semibold tabular-nums text-fg">{jarsOut}</span>
+          </li>
+          <li className="flex items-center justify-between gap-3 py-2.5">
+            <span className="text-sm text-fg">Set aside</span>
+            <span className="font-semibold tabular-nums text-fg">{setAside}</span>
+          </li>
+          <li className="flex items-center justify-between gap-3 py-2.5">
+            <span className="text-sm text-fg">Still in this batch</span>
+            <span className="font-semibold tabular-nums text-fg">{unaccounted}</span>
+          </li>
+        </ul>
+        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+          <span className="text-sm font-semibold text-fg-muted">
+            {unaccounted === 0 && jars > 0 ? "Fully accounted for" : "Made"}
+          </span>
+          <span className="text-lg font-bold tabular-nums text-fg">{jars}</span>
+        </div>
+      </section>
+
+      {batch.allocations.length > 0 ? (
+        <section className="card p-4">
+          <h2 className="mb-3 font-bold text-fg">Set aside</h2>
+          <ul className="divide-y divide-line">
+            {batch.allocations.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-fg">
+                    <span className="font-semibold tabular-nums">{a.quantity} ×</span> {a.name}
+                  </p>
+                  <p className="text-xs text-fg-muted">
+                    {ALLOCATION_LABEL[a.kind]}
+                    {a.note ? ` · ${a.note}` : ""}
+                  </p>
+                </div>
+                <form action={removeAllocation} className="shrink-0">
+                  <input type="hidden" name="id" value={a.id} />
+                  <button
+                    type="submit"
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-fg-subtle hover:bg-danger-soft hover:text-danger"
+                  >
+                    Undo
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="card p-4">
         <h2 className="mb-3 font-bold text-fg">What it made</h2>

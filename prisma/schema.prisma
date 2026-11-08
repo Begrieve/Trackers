@@ -43,8 +43,9 @@ model Product {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  items      OrderItem[]
-  batchItems BatchItem[]
+  items       OrderItem[]
+  batchItems  BatchItem[]
+  allocations BatchAllocation[]
 }
 
 enum OrderStatus {
@@ -129,9 +130,10 @@ model Batch {
   updatedAt   DateTime @updatedAt
 
   createdBy  User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  items      BatchItem[]
-  costs      BatchCost[]
-  orderItems OrderItem[]
+  items       BatchItem[]
+  costs       BatchCost[]
+  orderItems  OrderItem[]
+  allocations BatchAllocation[]
 
   @@index([madeOn])
 }
@@ -143,6 +145,30 @@ model BatchCost {
   amount  Int
 
   batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+}
+
+/** Where jars went when nobody bought them. */
+enum AllocationKind {
+  DONATED
+  KEPT
+  SHIPPED
+  WASTED
+}
+
+model BatchAllocation {
+  id        String         @id @default(cuid())
+  batchId   String
+  productId String
+  name      String
+  quantity  Int
+  kind      AllocationKind
+  note      String?
+  createdAt DateTime       @default(now())
+
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([batchId])
 }

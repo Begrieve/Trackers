@@ -101,12 +101,19 @@ export type Report = {
   marginPct: number | null;
   /** Jars ordered whose product has no batch cost — profit above is optimistic. */
   uncostedJars: number;
+  /** Jars set aside from batches made in the range: kept, given away, lost. */
+  setAsideJars: number;
+  /** What those jars cost to make. Spent, with no sale against it. */
+  setAsideCost: number;
   products: ProductRow[];
   people: PersonRow[];
   methods: MethodRow[];
 };
 
-type ReportBatch = CostedBatch & { madeOn: Date };
+type ReportBatch = CostedBatch & {
+  madeOn: Date;
+  allocations?: { productId: string; quantity: number }[];
+};
 
 export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: Range): Report {
   // Unit costs come from every batch ever made, not just this period: a jar sold
@@ -181,6 +188,14 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
   }
 
   const scopedBatches = batches.filter((b) => inRange(b.madeOn, range));
+
+  // Jars kept, given away or lost: they cost what they cost, and no sale will
+  // ever cover them. Reported on their own rather than folded into margin,
+  // which measures what was sold.
+  const setAside = scopedBatches.flatMap((b) => b.allocations ?? []);
+  const setAsideResult = costOfGoodsSold(setAside, costs);
+  const setAsideJars = setAside.reduce((sum, a) => sum + a.quantity, 0);
+
   const cogsResult = costOfGoodsSold(soldItems, costs);
   const profit = billed - cogsResult.cost;
 
@@ -200,6 +215,8 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
     profit,
     marginPct: marginPercent(billed, profit),
     uncostedJars: cogsResult.uncostedJars,
+    setAsideJars,
+    setAsideCost: setAsideResult.cost,
     products: [...products.values()].sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name)),
     people: [...people.values()].sort((a, b) => b.billed - a.billed || a.name.localeCompare(b.name)),
     methods: [...methods.values()].sort((a, b) => b.amount - a.amount),

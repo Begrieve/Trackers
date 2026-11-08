@@ -11,9 +11,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DeliveriesPage() {
   const db = await getDb();
-  const [orders, batchItems] = await Promise.all([
+  const [orders, batchItems, allocations] = await Promise.all([
     getOrders(),
     db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
+    db.batchAllocation.findMany({ select: { productId: true, name: true, quantity: true } }),
   ]);
 
   const stock = stockByProduct(
@@ -27,6 +28,7 @@ export default async function DeliveriesPage() {
         status: order.status,
       })),
     ),
+    allocations,
   );
 
   const spare = new Map(stock.map((row) => [row.productId, row.spare]));
