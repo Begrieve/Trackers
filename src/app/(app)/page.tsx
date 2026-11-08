@@ -4,6 +4,9 @@ import { getOrders } from "@/lib/queries";
 import { bucketOf, orderMath, rollUp } from "@/lib/ledger";
 import { stockByProduct } from "@/lib/stock";
 import { formatDate, formatMoney } from "@/lib/money";
+import { formatAge } from "@/lib/age";
+import { shelfByProduct } from "@/lib/shelf";
+import { ALLOCATION_KINDS, ALLOCATION_LABEL, type AllocationKindValue } from "@/lib/allocations";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { readyCount } from "@/lib/readiness";
@@ -16,10 +19,16 @@ export default async function DashboardPage() {
   const [orders, batches, allocations] = await Promise.all([
     getOrders(),
     db.batch.findMany({
-      include: { items: true },
+      include: {
+        items: true,
+        allocations: true,
+        orderItems: { select: { productId: true, quantity: true } },
+      },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
-    db.batchAllocation.findMany({ select: { productId: true, name: true, quantity: true } }),
+    db.batchAllocation.findMany({
+      select: { productId: true, name: true, quantity: true, kind: true },
+    }),
   ]);
 
   const totals = rollUp(orders);
@@ -51,6 +60,18 @@ export default async function DashboardPage() {
   const needsAttention = stock.filter((row) => row.short > 0 || row.spare > 0).slice(0, 5);
   const awaitingYield = batches.filter((b) => b.items.length === 0);
   const latest = batches[0];
+
+  const shelf = new Map(shelfByProduct(batches).map((row) => [row.productId, row]));
+
+  // Jars that left without money, grouped by where they went.
+  const givenByKind = ALLOCATION_KINDS.map((kind) => ({
+    ...kind,
+    jars: allocations
+      .filter((a) => a.kind === (kind.value as AllocationKindValue))
+      .reduce((sum, a) => sum + a.quantity, 0),
+  })).filter((row) => row.jars > 0);
+
+  const givenTotal = givenByKind.reduce((sum, r) => sum + r.jars, 0);
 
   const withMath = orders.map((order) => ({ order, math: orderMath(order) }));
   const owesMoney = withMath.filter(({ order, math }) => bucketOf(order, math) === "UNPAID_RECEIVABLE");
@@ -183,7 +204,14 @@ export default async function DashboardPage() {
           <div className="card mt-3 divide-y divide-line">
             {needsAttention.map((row) => (
               <div key={row.productId} className="flex items-center justify-between gap-3 p-3">
-                <p className="min-w-0 truncate text-sm font-medium text-fg">{row.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-fg">{row.name}</p>
+                  {shelf.get(row.productId)?.oldest ? (
+                    <p className="truncate text-xs text-fg-muted">
+                      oldest {formatAge(shelf.get(row.productId)!.oldest!.madeOn)}
+                    </p>
+                  ) : null}
+                </div>
                 <p className="shrink-0 text-sm font-bold tabular-nums">
                   {row.short > 0 ? (
                     <span className="text-danger">{row.short} short</span>
@@ -196,6 +224,31 @@ export default async function DashboardPage() {
           </div>
         ) : null}
       </section>
+
+      {givenTotal > 0 ? (
+        <section>
+          <SectionHeading
+            title="Out without money"
+            subtitle={`${givenTotal} ${givenTotal === 1 ? "jar" : "jars"} that never became revenue`}
+            action={
+              <Link href="/reports?preset=all" className="text-sm font-semibold text-brand hover:underline">
+                In reports →
+              </Link>
+            }
+          />
+          <div className="card divide-y divide-line">
+            {givenByKind.map((row) => (
+              <div key={row.value} className="flex items-center justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-fg">{ALLOCATION_LABEL[row.value]}</p>
+                  <p className="truncate text-xs text-fg-muted">{row.hint}</p>
+                </div>
+                <p className="shrink-0 text-lg font-bold tabular-nums text-fg">{row.jars}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section>
         <SectionHeading

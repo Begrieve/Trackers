@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getDb } from "@/lib/scope";
 import { stockByProduct } from "@/lib/stock";
 import { formatDate, formatMoney } from "@/lib/money";
+import { formatAge, shortAge } from "@/lib/age";
+import { shelfByProduct } from "@/lib/shelf";
 import { batchJars, batchTotalCost, unitCosts } from "@/lib/costing";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { SetAsideJars } from "@/components/set-aside-jars";
@@ -12,7 +14,12 @@ export default async function BatchesPage() {
   const db = await getDb();
   const [batches, batchItems, orderItems, allocations] = await Promise.all([
     db.batch.findMany({
-      include: { items: { orderBy: { name: "asc" } }, costs: true, allocations: true },
+      include: {
+        items: { orderBy: { name: "asc" } },
+        costs: true,
+        allocations: true,
+        orderItems: { select: { productId: true, quantity: true } },
+      },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
     db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
@@ -54,6 +61,9 @@ export default async function BatchesPage() {
   const totalCommitted = stock.reduce((sum, r) => sum + r.committed, 0);
   const totalUntracked = stock.reduce((sum, r) => sum + r.untracked, 0);
   const totalAllocated = stock.reduce((sum, r) => sum + r.allocated, 0);
+
+  // How old the oldest jar of each product still on the shelf is.
+  const shelf = new Map(shelfByProduct(batches).map((row) => [row.productId, row]));
   const awaitingYield = batches.filter((b) => b.items.length === 0);
 
   return (
@@ -138,6 +148,14 @@ export default async function BatchesPage() {
                   <p className="mt-0.5 text-sm text-fg-muted">
                     {row.made} made · {row.delivered} delivered · {row.committed} promised
                   </p>
+                  {shelf.get(row.productId)?.oldest ? (
+                    <p className="mt-0.5 text-sm text-fg-muted">
+                      Oldest on the shelf: {formatAge(shelf.get(row.productId)!.oldest!.madeOn)} ·{" "}
+                      <span className="font-mono text-xs">
+                        {shelf.get(row.productId)!.oldest!.code}
+                      </span>
+                    </p>
+                  ) : null}
                   {row.untracked > 0 ? (
                     <p className="mt-0.5 text-sm text-warn">
                       {row.untracked} delivered with no batch recorded
@@ -188,9 +206,12 @@ export default async function BatchesPage() {
                         <span className="pill bg-surface-2 font-mono text-xs text-fg-muted ring-line">
                           {batch.code}
                         </span>
+                        <span className="pill bg-surface-2 text-xs font-semibold text-fg-muted ring-line">
+                          {shortAge(batch.madeOn)}
+                        </span>
                       </Link>
                       <p className="mt-0.5 text-sm text-fg-muted">
-                        Made {formatDate(batch.madeOn)}
+                        Made {formatDate(batch.madeOn)} · {formatAge(batch.madeOn)}
                         {batch.readyOn ? ` · ready ${formatDate(batch.readyOn)}` : ""}
                       </p>
                     </div>
