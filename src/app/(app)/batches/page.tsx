@@ -4,6 +4,7 @@ import { stockByProduct } from "@/lib/stock";
 import { formatDate, formatMoney } from "@/lib/money";
 import { batchJars, batchTotalCost, unitCosts } from "@/lib/costing";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
+import { SetAsideJars } from "@/components/set-aside-jars";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,10 @@ export default async function BatchesPage() {
           account for them, record a batch dated when you made them.
         </p>
       ) : null}
+
+      <SetAsideJars
+        rows={stock.map((row) => ({ productId: row.productId, name: row.name, spare: row.spare }))}
+      />
 
       <section>
         <SectionHeading title="Where each product stands" subtitle="On hand is what you made and still hold" />

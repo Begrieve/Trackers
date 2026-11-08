@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 
-export type ActionState = { error?: string; ok?: boolean };
+export type ActionState = { error?: string; ok?: boolean; message?: string };
 
 const customerSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),

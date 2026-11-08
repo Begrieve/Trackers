@@ -56,7 +56,15 @@ Cancelled orders release their claim on stock.
 
 ### Jars that aren't sold
 
-Not every jar leaves a batch through an order. **Keep or give away jars** on a batch
+Not every jar leaves a batch through an order.
+
+The quick way is **Keep or give away a jar**, on the dashboard and the Batches page.
+Pick the kimchi, say how many, and save — the batch is chosen for you, oldest stock
+first, and a request bigger than one batch is split across several. It tells you
+afterwards which batch it came out of, so the traceability is never guesswork. You can
+only ask for what is actually on the shelf.
+
+To work from a particular batch instead, **Keep or give away jars** on that batch
 records the ones that don't, as **Kept for us**, **Given away**, **Shipped**, or
 **Lost**, with a note. Set aside a single jar, or hit **Take the whole batch** to
 account for everything it still holds — useful when a whole cook is shipped or gifted.

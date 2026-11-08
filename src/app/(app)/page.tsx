@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/lib/money";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { readyCount } from "@/lib/readiness";
+import { SetAsideJars } from "@/components/set-aside-jars";
 
 export const dynamic = "force-dynamic";
 
@@ -173,6 +174,10 @@ export default async function DashboardPage() {
             ))}
           </p>
         ) : null}
+
+        <SetAsideJars
+          rows={stock.map((row) => ({ productId: row.productId, name: row.name, spare: row.spare }))}
+        />
 
         {needsAttention.length > 0 ? (
           <div className="card mt-3 divide-y divide-line">
