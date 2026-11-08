@@ -28,6 +28,7 @@ export default async function ReportsPage({
         madeOn: true,
         items: { select: { productId: true, quantity: true } },
         costs: { select: { amount: true } },
+        allocations: { select: { productId: true, quantity: true } },
       },
     }),
   ]);
@@ -151,6 +152,22 @@ export default async function ReportsPage({
           tone="amber"
         />
       </section>
+
+      {report.setAsideJars > 0 ? (
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            label="Set aside"
+            value={String(report.setAsideJars)}
+            hint="Kept, given away or lost"
+          />
+          <StatCard
+            label="Cost of those jars"
+            value={formatMoney(report.setAsideCost)}
+            hint="Spent, with no sale against it"
+            tone="amber"
+          />
+        </section>
+      ) : null}
 
       {report.uncostedJars > 0 ? (
         <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">

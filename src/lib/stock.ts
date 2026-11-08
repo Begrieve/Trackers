@@ -12,6 +12,8 @@ export type StockRow = {
   short: number;
   /** Delivered jars that named the batch they came from. */
   drawnDown: number;
+  /** Jars set aside without a sale: given away, kept, shipped, or lost. */
+  allocated: number;
   /**
    * Jars delivered without a batch attached: cooks from before batch tracking,
    * or a batch never written down. They are reported rather than treated as a
@@ -30,7 +32,13 @@ type OrderLine = {
   batchId?: string | null;
 };
 
-export function stockByProduct(batchLines: BatchLine[], orderLines: OrderLine[]): StockRow[] {
+type AllocationLine = { productId: string; name: string; quantity: number };
+
+export function stockByProduct(
+  batchLines: BatchLine[],
+  orderLines: OrderLine[],
+  allocationLines: AllocationLine[] = [],
+): StockRow[] {
   const rows = new Map<string, StockRow>();
 
   const row = (productId: string, name: string) => {
@@ -47,6 +55,7 @@ export function stockByProduct(batchLines: BatchLine[], orderLines: OrderLine[])
         short: 0,
         untracked: 0,
         drawnDown: 0,
+        allocated: 0,
       };
       rows.set(productId, existing);
     }
@@ -72,10 +81,15 @@ export function stockByProduct(batchLines: BatchLine[], orderLines: OrderLine[])
     }
   }
 
+  for (const line of allocationLines) {
+    row(line.productId, line.name).allocated += line.quantity;
+  }
+
   for (const value of rows.values()) {
-    // Floored at zero: a delivered jar is gone, so it can reduce what is on
-    // hand but never create a future shortfall.
-    value.onHand = Math.max(value.made - value.drawnDown, 0);
+    // Floored at zero: a jar that has left the kitchen — handed over, given
+    // away or kept — can reduce what is on hand but never create a future
+    // shortfall. Only undelivered promises do that.
+    value.onHand = Math.max(value.made - value.drawnDown - value.allocated, 0);
     value.spare = Math.max(value.onHand - value.committed, 0);
     value.short = Math.max(value.committed - value.onHand, 0);
   }

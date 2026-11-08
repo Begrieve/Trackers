@@ -54,6 +54,26 @@ you actually made them.
 
 Cancelled orders release their claim on stock.
 
+### Jars that aren't sold
+
+Not every jar leaves a batch through an order. **Keep or give away jars** on a batch
+records the ones that don't, as **Kept for us**, **Given away**, **Shipped**, or
+**Lost**, with a note. Set aside a single jar, or hit **Take the whole batch** to
+account for everything it still holds — useful when a whole cook is shipped or gifted.
+
+The batch page then shows where every jar went — to orders, set aside, still here —
+and says **Fully accounted for** once nothing is left unexplained.
+
+Two consequences worth knowing:
+
+- **Jars set aside leave the shelf.** They stop counting as spare, and if that leaves
+  an open order uncovered, it correctly turns into a shortfall — giving stock away is
+  exactly the kind of thing that should tell you to cook again.
+- **They cost what they cost.** Reports show the jars set aside and what they cost to
+  make, separately from margin. Margin measures what was sold; a jar you gave to your
+  mother was never going to be revenue, so folding it into the margin would just make
+  the figure lie.
+
 ### Recording the yield afterwards
 
 A cook can be logged before it's packed. Yield varies from batch to batch and isn't

@@ -104,3 +104,59 @@ test("shortfalls sort to the top", () => {
   );
   assert.equal(rows[0].productId, "b");
 });
+
+test("jars kept or given away leave the shelf", () => {
+  // 20 made, 3 kept for the household: 17 are sellable, not 20.
+  const [row] = stockByProduct(
+    [{ productId: "p1", name: "Napa", quantity: 20 }],
+    [],
+    [{ productId: "p1", name: "Napa", quantity: 3 }],
+  );
+  assert.equal(row.allocated, 3);
+  assert.equal(row.onHand, 17);
+  assert.equal(row.spare, 17);
+});
+
+test("giving jars away can leave an open order short", () => {
+  // 10 made, 8 donated, 5 promised: 3 left on the shelf, so 2 must be made.
+  const [row] = stockByProduct(
+    [{ productId: "p1", name: "Napa", quantity: 10 }],
+    [{ productId: "p1", name: "Napa", quantity: 5, status: "PENDING" }],
+    [{ productId: "p1", name: "Napa", quantity: 8 }],
+  );
+  assert.equal(row.onHand, 2);
+  assert.equal(row.short, 3);
+  assert.equal(row.spare, 0);
+});
+
+test("a whole batch kept back leaves nothing on hand and no shortfall", () => {
+  const [row] = stockByProduct(
+    [{ productId: "p1", name: "Napa", quantity: 12 }],
+    [],
+    [{ productId: "p1", name: "Napa", quantity: 12 }],
+  );
+  assert.equal(row.onHand, 0);
+  assert.equal(row.spare, 0);
+  assert.equal(row.short, 0);
+});
+
+test("allocating more than was made cannot drive stock negative", () => {
+  const [row] = stockByProduct(
+    [{ productId: "p1", name: "Napa", quantity: 4 }],
+    [],
+    [{ productId: "p1", name: "Napa", quantity: 9 }],
+  );
+  assert.equal(row.onHand, 0);
+  assert.equal(row.short, 0, "nothing is owed, so nothing is short");
+});
+
+test("deliveries and allocations both draw the same batch down", () => {
+  const [row] = stockByProduct(
+    [{ productId: "p1", name: "Napa", quantity: 20 }],
+    [{ productId: "p1", name: "Napa", quantity: 6, status: "DELIVERED", batchId: "b1" }],
+    [{ productId: "p1", name: "Napa", quantity: 4 }],
+  );
+  assert.equal(row.drawnDown, 6);
+  assert.equal(row.allocated, 4);
+  assert.equal(row.onHand, 10);
+});

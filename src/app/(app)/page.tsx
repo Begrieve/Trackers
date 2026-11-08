@@ -12,12 +12,13 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const db = await getDb();
-  const [orders, batches] = await Promise.all([
+  const [orders, batches, allocations] = await Promise.all([
     getOrders(),
     db.batch.findMany({
       include: { items: true },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
+    db.batchAllocation.findMany({ select: { productId: true, name: true, quantity: true } }),
   ]);
 
   const totals = rollUp(orders);
@@ -34,6 +35,7 @@ export default async function DashboardPage() {
         status: order.status,
       })),
     ),
+    allocations,
   );
 
   const jars = {
