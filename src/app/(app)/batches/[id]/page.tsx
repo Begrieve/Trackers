@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDb } from "@/lib/scope";
 import { formatDate, formatMoney } from "@/lib/money";
+import { formatAge } from "@/lib/age";
 import { batchJars, batchTotalCost } from "@/lib/costing";
 import { EmptyState, SectionHeading } from "@/components/ui";
 import { deleteBatch } from "@/actions/batches";
@@ -91,7 +92,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
           <span className="pill bg-surface-2 font-mono text-fg-muted ring-line">{batch.code}</span>
         </div>
         <p className="mt-1 text-sm text-fg-muted">
-          Made {formatDate(batch.madeOn)}
+          Made {formatDate(batch.madeOn)} · {formatAge(batch.madeOn)}
           {batch.readyOn ? ` · ready ${formatDate(batch.readyOn)}` : ""}
         </p>
       </div>

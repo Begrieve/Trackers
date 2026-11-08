@@ -54,6 +54,20 @@ you actually made them.
 
 Cancelled orders release their claim on stock.
 
+### Age
+
+Kimchi keeps changing in the jar, so age is shown rather than left to be worked out
+from a date. Every batch carries a short pill — `5d`, `6w`, `3mo` — beside its code,
+and spells it out underneath: *Made Sep 22, 2026 · 6 weeks old*.
+
+More useful than the batch's own age is **oldest on the shelf**: the age of the oldest
+jar of a product you still hold, with the batch it belongs to. An emptied old batch
+stops counting, so the figure tracks what's actually in the fridge, and products are
+listed oldest-first — that's the order worth selling in. The dashboard carries the
+same age under each product.
+
+Nothing here judges whether a jar is still good. It reports age; that call is yours.
+
 ### Jars that aren't sold
 
 Not every jar leaves a batch through an order.
@@ -77,6 +91,10 @@ Two consequences worth knowing:
 - **Jars set aside leave the shelf.** They stop counting as spare, and if that leaves
   an open order uncovered, it correctly turns into a shortfall — giving stock away is
   exactly the kind of thing that should tell you to cook again.
+The dashboard carries an **Out without money** panel totalling those jars by where
+they went — kept, given away, shipped, lost — so a habit of giving stock away is
+visible without opening a report.
+
 - **They cost what they cost.** Reports show the jars set aside and what they cost to
   make, separately from margin. Margin measures what was sold; a jar you gave to your
   mother was never going to be revenue, so folding it into the margin would just make
