@@ -2,10 +2,11 @@ import Link from "next/link";
 import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { bucketOf, orderMath, rollUp } from "@/lib/ledger";
-import { stockByProduct } from "@/lib/stock";
+import { stockByVariety } from "@/lib/stock";
 import { formatDate, formatMoney } from "@/lib/money";
 import { formatAge } from "@/lib/age";
-import { shelfByProduct } from "@/lib/shelf";
+import { formatWeight, jarsFrom } from "@/lib/weight";
+import { shelfByVariety } from "@/lib/shelf";
 import { ALLOCATION_KINDS, ALLOCATION_LABEL, type AllocationKindValue } from "@/lib/allocations";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
@@ -16,36 +17,47 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const db = await getDb();
-  const [orders, batches, allocations] = await Promise.all([
+  const [orders, batches, allocations, products] = await Promise.all([
     getOrders(),
     db.batch.findMany({
       include: {
-        items: true,
+        yields: true,
         allocations: true,
-        orderItems: { select: { productId: true, quantity: true } },
+        orderItems: { select: { varietyId: true, quantity: true, jarWeightOz: true } },
       },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
     db.batchAllocation.findMany({
-      select: { productId: true, name: true, quantity: true, kind: true },
+      select: { varietyId: true, name: true, quantity: true, jarWeightOz: true, kind: true },
     }),
+    db.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
   const totals = rollUp(orders);
   const ready = readyCount(orders);
 
-  const stock = stockByProduct(
-    batches.flatMap((b) => b.items.map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity }))),
+  const stock = stockByVariety(
+    batches.flatMap((b) => b.yields),
     orders.flatMap((order) =>
-      order.items.map((i) => ({
-        productId: i.productId,
-        name: i.name,
-        quantity: i.quantity,
-        batchId: i.batchId,
-        status: order.status,
-      })),
+      order.items
+        .filter((i) => i.varietyId)
+        .map((i) => ({
+          varietyId: i.varietyId!,
+          name: i.name,
+          quantity: i.quantity,
+          jarWeightOz: i.jarWeightOz ?? 16,
+          batchId: i.batchId,
+          status: order.status,
+        })),
     ),
-    allocations,
+    allocations
+      .filter((a) => a.varietyId)
+      .map((a) => ({
+        varietyId: a.varietyId!,
+        name: a.name,
+        quantity: a.quantity,
+        jarWeightOz: a.jarWeightOz,
+      })),
   );
 
   const jars = {
@@ -58,10 +70,10 @@ export default async function DashboardPage() {
   // Only the products actually worth acting on: something to cook, or jars free
   // to sell.
   const needsAttention = stock.filter((row) => row.short > 0 || row.spare > 0).slice(0, 5);
-  const awaitingYield = batches.filter((b) => b.items.length === 0);
+  const awaitingYield = batches.filter((b) => b.yields.length === 0);
   const latest = batches[0];
 
-  const shelf = new Map(shelfByProduct(batches).map((row) => [row.productId, row]));
+  const shelf = new Map(shelfByVariety(batches).map((row) => [row.varietyId, row]));
 
   // Jars that left without money, grouped by where they went.
   const givenByKind = ALLOCATION_KINDS.map((kind) => ({
@@ -153,27 +165,27 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             label="On hand"
-            value={String(jars.onHand)}
+            value={formatWeight(jars.onHand)}
             hint="Made and still held"
             href="/batches"
           />
           <StatCard
             label="Spare"
-            value={String(jars.spare)}
+            value={formatWeight(jars.spare)}
             hint="Free to sell"
             tone={jars.spare > 0 ? "emerald" : "neutral"}
             href="/batches"
           />
           <StatCard
             label="Promised"
-            value={String(jars.promised)}
+            value={formatWeight(jars.promised)}
             hint="Claimed by open orders"
             tone="violet"
             href="/orders?filter=pending"
           />
           <StatCard
             label="Short"
-            value={String(jars.short)}
+            value={formatWeight(jars.short)}
             hint={jars.short > 0 ? "Still to cook" : "Every order covered"}
             tone={jars.short > 0 ? "rose" : "neutral"}
             href="/deliveries"
@@ -197,26 +209,35 @@ export default async function DashboardPage() {
         ) : null}
 
         <SetAsideJars
-          rows={stock.map((row) => ({ productId: row.productId, name: row.name, spare: row.spare }))}
+          rows={products
+            .filter((p) => p.varietyId)
+            .map((p) => ({
+              productId: p.id,
+              name: p.name,
+              spare: jarsFrom(
+                stock.find((s) => s.varietyId === p.varietyId)?.spare ?? 0,
+                p.jarWeightOz,
+              ),
+            }))}
         />
 
         {needsAttention.length > 0 ? (
           <div className="card mt-3 divide-y divide-line">
             {needsAttention.map((row) => (
-              <div key={row.productId} className="flex items-center justify-between gap-3 p-3">
+              <div key={row.varietyId} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-fg">{row.name}</p>
-                  {shelf.get(row.productId)?.oldest ? (
+                  {shelf.get(row.varietyId)?.oldest ? (
                     <p className="truncate text-xs text-fg-muted">
-                      oldest {formatAge(shelf.get(row.productId)!.oldest!.madeOn)}
+                      oldest {formatAge(shelf.get(row.varietyId)!.oldest!.madeOn)}
                     </p>
                   ) : null}
                 </div>
                 <p className="shrink-0 text-sm font-bold tabular-nums">
                   {row.short > 0 ? (
-                    <span className="text-danger">{row.short} short</span>
+                    <span className="text-danger">{formatWeight(row.short)} short</span>
                   ) : (
-                    <span className="text-success">{row.spare} spare</span>
+                    <span className="text-success">{formatWeight(row.spare)} spare</span>
                   )}
                 </p>
               </div>

@@ -21,10 +21,12 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
     await db.orderItem.deleteMany();
     await db.order.deleteMany();
     await db.batchCost.deleteMany();
-    await db.batchItem.deleteMany();
+    await db.batchAllocation.deleteMany();
+    await db.batchYield.deleteMany();
     await db.batch.deleteMany();
     await db.customer.deleteMany();
     await db.product.deleteMany();
+    await db.variety.deleteMany();
     await db.user.deleteMany();
 
     await db.user.create({
@@ -37,12 +39,18 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
       },
     });
 
+    const [napaVariety, cucumberVariety, radishVariety] = await Promise.all(
+      ["Napa cabbage kimchi", "Cucumber kimchi (oi sobagi)", "Radish kimchi (kkakdugi)"].map(
+        (name) => db.variety.create({ data: { name } }),
+      ),
+    );
+
     const products = await Promise.all(
       [
-        { name: "Napa cabbage kimchi — 32 oz", unitPrice: 2500 },
-        { name: "Napa cabbage kimchi — 16 oz", unitPrice: 1500 },
-        { name: "Cucumber kimchi (oi sobagi) — 16 oz", unitPrice: 1600 },
-        { name: "Radish kimchi (kkakdugi) — 16 oz", unitPrice: 1600 },
+        { name: "Napa cabbage kimchi — 32 oz", unitPrice: 2500, jarWeightOz: 32, varietyId: napaVariety.id },
+        { name: "Napa cabbage kimchi — 16 oz", unitPrice: 1500, jarWeightOz: 16, varietyId: napaVariety.id },
+        { name: "Cucumber kimchi (oi sobagi) — 16 oz", unitPrice: 1600, jarWeightOz: 16, varietyId: cucumberVariety.id },
+        { name: "Radish kimchi (kkakdugi) — 16 oz", unitPrice: 1600, jarWeightOz: 16, varietyId: radishVariety.id },
       ].map((p) => db.product.create({ data: { ...p, unitLabel: "jar" } })),
     );
     const [napa32, napa16, cucumber, radish] = products;
@@ -67,11 +75,8 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         readyOn: ago(12),
         notes: "Salted overnight. Good crunch.",
         createdById: DEMO_USER_ID,
-        items: {
-          create: [
-            { productId: napa32.id, name: napa32.name, quantity: 10 },
-            { productId: napa16.id, name: napa16.name, quantity: 18 },
-          ],
+        yields: {
+          create: [{ varietyId: napaVariety.id, name: napaVariety.name, weightOz: 38 * 16 }],
         },
         costs: {
           create: [
@@ -89,10 +94,10 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         label: "Cucumber and radish",
         madeOn: ago(3),
         createdById: DEMO_USER_ID,
-        items: {
+        yields: {
           create: [
-            { productId: cucumber.id, name: cucumber.name, quantity: 12 },
-            { productId: radish.id, name: radish.name, quantity: 8 },
+            { varietyId: cucumberVariety.id, name: cucumberVariety.name, weightOz: 12 * 16 },
+            { varietyId: radishVariety.id, name: radishVariety.name, weightOz: 8 * 16 },
           ],
         },
         costs: { create: [{ label: "Ingredients", amount: 4100 }] },
@@ -109,7 +114,7 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         deliveredAt: ago(11),
         items: {
           create: [
-            { productId: napa32.id, batchId: october.id, name: napa32.name, quantity: 2, unitPrice: 2500 },
+            { productId: napa32.id, batchId: october.id, name: napa32.name, quantity: 2, unitPrice: 2500, varietyId: napaVariety.id, jarWeightOz: 32 },
           ],
         },
         payments: {
@@ -134,7 +139,7 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         deliveredAt: ago(10),
         items: {
           create: [
-            { productId: napa16.id, batchId: october.id, name: napa16.name, quantity: 3, unitPrice: 1500 },
+            { productId: napa16.id, batchId: october.id, name: napa16.name, quantity: 3, unitPrice: 1500, varietyId: napaVariety.id, jarWeightOz: 16 },
           ],
         },
       },
@@ -150,7 +155,7 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         deliveredAt: ago(7),
         items: {
           create: [
-            { productId: napa16.id, batchId: october.id, name: napa16.name, quantity: 4, unitPrice: 1500 },
+            { productId: napa16.id, batchId: october.id, name: napa16.name, quantity: 4, unitPrice: 1500, varietyId: napaVariety.id, jarWeightOz: 16 },
           ],
         },
         payments: {
@@ -174,7 +179,7 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         orderedAt: ago(4),
         items: {
           create: [
-            { productId: cucumber.id, batchId: november.id, name: cucumber.name, quantity: 3, unitPrice: 1600 },
+            { productId: cucumber.id, batchId: november.id, name: cucumber.name, quantity: 3, unitPrice: 1600, varietyId: cucumberVariety.id, jarWeightOz: 16 },
           ],
         },
         payments: {
@@ -199,8 +204,8 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
         orderedAt: ago(1),
         items: {
           create: [
-            { productId: napa32.id, name: napa32.name, quantity: 4, unitPrice: 2500 },
-            { productId: radish.id, name: radish.name, quantity: 2, unitPrice: 1600 },
+            { productId: napa32.id, name: napa32.name, quantity: 4, unitPrice: 2500, varietyId: napaVariety.id, jarWeightOz: 32 },
+            { productId: radish.id, name: radish.name, quantity: 2, unitPrice: 1600, varietyId: radishVariety.id, jarWeightOz: 16 },
           ],
         },
       },

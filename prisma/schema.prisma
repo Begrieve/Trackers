@@ -35,16 +35,29 @@ model Customer {
   @@index([name])
 }
 
+model Variety {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  products Product[]
+  yields   BatchYield[]
+}
+
 model Product {
   id        String   @id @default(cuid())
   name      String
+  varietyId String?
+  /** How much kimchi this jar holds, in ounces. A 16 oz jar holds about 1 lb. */
+  jarWeightOz Int    @default(16)
   unitLabel String   @default("jar")
   unitPrice Int
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  variety Variety? @relation(fields: [varietyId], references: [id], onDelete: SetNull)
+
   items       OrderItem[]
-  batchItems  BatchItem[]
   allocations BatchAllocation[]
 }
 
@@ -83,6 +96,9 @@ model OrderItem {
   name      String
   quantity  Int
   unitPrice Int
+  /** Snapshot, like the name and price: what this jar was when it was sold. */
+  varietyId String?
+  jarWeightOz Int   @default(16)
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -130,7 +146,7 @@ model Batch {
   updatedAt   DateTime @updatedAt
 
   createdBy  User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  items       BatchItem[]
+  yields      BatchYield[]
   costs       BatchCost[]
   orderItems  OrderItem[]
   allocations BatchAllocation[]
@@ -163,6 +179,8 @@ model BatchAllocation {
   productId String
   name      String
   quantity  Int
+  varietyId String?
+  jarWeightOz Int          @default(16)
   kind      AllocationKind
   note      String?
   createdAt DateTime       @default(now())
@@ -173,15 +191,17 @@ model BatchAllocation {
   @@index([batchId])
 }
 
-model BatchItem {
+/** What a batch made: weight of one kimchi type. Jars are filled from it later. */
+model BatchYield {
   id        String @id @default(cuid())
   batchId   String
-  productId String
+  varietyId String
   name      String
-  quantity  Int
+  /** Ounces. Stored as a whole number so repeated arithmetic cannot drift. */
+  weightOz  Int
 
   batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  variety Variety @relation(fields: [varietyId], references: [id])
 
   @@index([batchId])
 }

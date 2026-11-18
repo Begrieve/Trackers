@@ -1,114 +1,92 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { costOfGoodsSold, marginPercent, unitCosts } from "./costing";
+import { batchWeight, costOfGoodsSold, costOfJar, marginPercent, unitCosts } from "./costing";
 
-test("splits a batch cost evenly across the jars it made", () => {
-  const costs = unitCosts([
-    { items: [{ productId: "napa", quantity: 30 }], costs: [{ amount: 12000 }] },
-  ]);
-  assert.equal(costs.get("napa")?.perJar, 400); // $120 over 30 jars
+const cook = (weightOz: number, amount: number, varietyId = "napa") => ({
+  yields: [{ varietyId, weightOz }],
+  costs: [{ amount }],
 });
 
-test("sums itemised costs before dividing", () => {
-  const costs = unitCosts([
-    {
-      items: [{ productId: "napa", quantity: 10 }],
-      costs: [{ amount: 6000 }, { amount: 3000 }, { amount: 1000 }],
-    },
-  ]);
-  assert.equal(costs.get("napa")?.perJar, 1000); // $100 over 10 jars
+test("cost is carried per ounce, from what the cook made", () => {
+  // $40 over 20 lb (320 oz) is 12.5 cents an ounce.
+  const costs = unitCosts([cook(320, 4000)]);
+  assert.equal(costs.get("napa")?.perOz, 12.5);
 });
 
-test("a mixed batch shares its cost across both products", () => {
+test("a big jar costs exactly twice a small one", () => {
+  // The reason weight is the unit: an even split across jars could not say this.
+  const unit = unitCosts([cook(320, 4000)]).get("napa");
+  assert.equal(costOfJar(unit, 16), 200);
+  assert.equal(costOfJar(unit, 32), 400);
+});
+
+test("itemised costs are summed before dividing", () => {
+  const costs = unitCosts([{ yields: [{ varietyId: "napa", weightOz: 160 }], costs: [{ amount: 6000 }, { amount: 2000 }] }]);
+  assert.equal(costOfJar(costs.get("napa"), 16), 800, "$80 over 10 lb is $8 a pound");
+});
+
+test("a cook of two kimchis splits its cost by weight", () => {
   const costs = unitCosts([
     {
-      items: [
-        { productId: "napa", quantity: 6 },
-        { productId: "radish", quantity: 4 },
+      yields: [
+        { varietyId: "napa", weightOz: 300 },
+        { varietyId: "radish", weightOz: 100 },
       ],
-      costs: [{ amount: 10000 }],
+      costs: [{ amount: 4000 }],
     },
   ]);
-  assert.equal(costs.get("napa")?.totalCost, 6000);
-  assert.equal(costs.get("radish")?.totalCost, 4000);
-  assert.equal(costs.get("napa")?.perJar, 1000);
-  assert.equal(costs.get("radish")?.perJar, 1000);
+  assert.equal(costs.get("napa")?.totalCost, 3000);
+  assert.equal(costs.get("radish")?.totalCost, 1000);
+  assert.equal(costs.get("napa")?.perOz, 10);
 });
 
-test("averages across batches by jars made, not by batch count", () => {
-  const costs = unitCosts([
-    { items: [{ productId: "napa", quantity: 90 }], costs: [{ amount: 9000 }] }, // $1.00/jar
-    { items: [{ productId: "napa", quantity: 10 }], costs: [{ amount: 3000 }] }, // $3.00/jar
-  ]);
-  // 100 jars costing $120 in total => $1.20 each, not the $2.00 that averaging
-  // the two batches' per-jar rates would give.
-  assert.equal(costs.get("napa")?.perJar, 120);
+test("averaging across cooks is by weight, not by how many cooks there were", () => {
+  // 90 lb at $1/lb and 10 lb at $3/lb is $1.20 a pound, not $2.
+  const costs = unitCosts([cook(1440, 9000), cook(160, 3000)]);
+  assert.equal(costOfJar(costs.get("napa"), 16), 120);
 });
 
-test("a batch with no costs recorded contributes zero, not a crash", () => {
-  const costs = unitCosts([{ items: [{ productId: "napa", quantity: 10 }], costs: [] }]);
-  assert.equal(costs.get("napa")?.perJar, 0);
+test("a cook with no weight recorded prices nothing", () => {
+  assert.equal(unitCosts([{ yields: [], costs: [{ amount: 4000 }] }]).size, 0);
 });
 
-test("a batch that made nothing is ignored rather than dividing by zero", () => {
-  const costs = unitCosts([{ items: [], costs: [{ amount: 5000 }] }]);
-  assert.equal(costs.size, 0);
+test("a cook with no cost recorded contributes zero, not a crash", () => {
+  const costs = unitCosts([{ yields: [{ varietyId: "napa", weightOz: 160 }], costs: [] }]);
+  assert.equal(costOfJar(costs.get("napa"), 16), 0);
 });
 
-test("cost of goods sold multiplies jars sold by their unit cost", () => {
-  const costs = unitCosts([
-    { items: [{ productId: "napa", quantity: 30 }], costs: [{ amount: 12000 }] },
-  ]);
-  const result = costOfGoodsSold([{ productId: "napa", quantity: 5 }], costs);
-  assert.equal(result.cost, 2000);
-  assert.equal(result.costedJars, 5);
-  assert.equal(result.uncostedJars, 0);
-});
-
-test("jars with no batch cost are reported rather than silently counted as free", () => {
-  const costs = unitCosts([
-    { items: [{ productId: "napa", quantity: 10 }], costs: [{ amount: 5000 }] },
-  ]);
+test("cost of goods sold weighs each jar size properly", () => {
+  const costs = unitCosts([cook(320, 4000)]);
   const result = costOfGoodsSold(
     [
-      { productId: "napa", quantity: 2 },
-      { productId: "cucumber", quantity: 7 },
+      { varietyId: "napa", quantity: 2, jarWeightOz: 16 },
+      { varietyId: "napa", quantity: 1, jarWeightOz: 32 },
     ],
     costs,
   );
-  assert.equal(result.cost, 1000);
+  assert.equal(result.cost, 400 + 400);
+  assert.equal(result.costedJars, 3);
+});
+
+test("jars with no cost behind them are reported, not treated as free", () => {
+  const costs = unitCosts([cook(160, 4000)]);
+  const result = costOfGoodsSold(
+    [
+      { varietyId: "napa", quantity: 2, jarWeightOz: 16 },
+      { varietyId: "cucumber", quantity: 7, jarWeightOz: 16 },
+    ],
+    costs,
+  );
+  assert.equal(result.uncostedJars, 7);
   assert.equal(result.costedJars, 2);
-  assert.equal(result.uncostedJars, 7, "the cucumber jars have no cost behind them");
+});
+
+test("batch weight adds its yields up", () => {
+  assert.equal(batchWeight({ yields: [{ weightOz: 320 }, { weightOz: 96 }] }), 416);
 });
 
 test("margin is a percentage of revenue", () => {
   assert.equal(marginPercent(10000, 4000), 40);
-  assert.equal(marginPercent(3000, 1000), 33.3);
-});
-
-test("margin is undefined rather than infinite when nothing was sold", () => {
   assert.equal(marginPercent(0, 0), null);
-});
-
-test("margin goes negative when a batch costs more than it earns", () => {
   assert.equal(marginPercent(1000, -500), -50);
-});
-
-test("a cook logged before it is packed prices nothing until the yield is entered", () => {
-  // Costs are known on the day; the jar count comes later and varies.
-  const before = unitCosts([{ items: [], costs: [{ amount: 4000 }] }]);
-  assert.equal(before.size, 0, "no per-jar cost can exist without a yield");
-
-  const after = unitCosts([
-    { items: [{ productId: "napa", quantity: 16 }], costs: [{ amount: 4000 }] },
-  ]);
-  assert.equal(after.get("napa")?.perJar, 250, "$40 over the 16 jars it turned out to make");
-});
-
-test("the same spend over a different yield gives a different cost per jar", () => {
-  // The point of recording yield per batch: it varies cook to cook.
-  const lean = unitCosts([{ items: [{ productId: "napa", quantity: 10 }], costs: [{ amount: 4000 }] }]);
-  const heavy = unitCosts([{ items: [{ productId: "napa", quantity: 25 }], costs: [{ amount: 4000 }] }]);
-  assert.equal(lean.get("napa")?.perJar, 400);
-  assert.equal(heavy.get("napa")?.perJar, 160);
 });

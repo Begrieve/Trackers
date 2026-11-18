@@ -1,51 +1,70 @@
+/**
+ * Stock, in weight.
+ *
+ * A batch is a weight of one kimchi type. Jars are filled from it when orders
+ * are assigned, so every jar that leaves is converted to the weight it took
+ * with it. Totals are per variety, because a 16 oz and a 32 oz jar of the same
+ * kimchi come out of the same cook.
+ */
+
 export type StockRow = {
-  productId: string;
+  varietyId: string;
   name: string;
+  /** Ounces made across every batch of this kimchi. */
   made: number;
+  /** Weight handed over on delivered orders. */
   delivered: number;
+  /** Weight promised on orders not yet delivered. */
   committed: number;
-  /** Jars made and not yet handed over. Never negative. */
+  /** Made and still held. Never negative. */
   onHand: number;
   /** On hand beyond what open orders have claimed. */
   spare: number;
-  /** Open orders beyond what is on hand — what still has to be made. */
+  /** Promised beyond what is on hand — what still has to be made. */
   short: number;
-  /** Delivered jars that named the batch they came from. */
+  /** Delivered weight that named the batch it came from. */
   drawnDown: number;
-  /** Jars set aside without a sale: given away, kept, shipped, or lost. */
+  /** Weight set aside without a sale: kept, given away, shipped, lost. */
   allocated: number;
   /**
-   * Jars delivered without a batch attached: cooks from before batch tracking,
-   * or a batch never written down. They are reported rather than treated as a
-   * shortfall, and they consume no recorded stock, because the jars came from
-   * kimchi this ledger never knew about.
+   * Delivered without a batch attached: cooks from before this was recorded.
+   * Reported rather than treated as a shortfall, and it draws nothing down,
+   * because that kimchi was never in these books.
    */
   untracked: number;
 };
 
-type BatchLine = { productId: string; name: string; quantity: number };
-type OrderLine = {
-  productId: string;
+type YieldLine = { varietyId: string; name: string; weightOz: number };
+
+/** Jars leaving: a count, plus what one jar weighs. */
+type JarLine = {
+  varietyId: string;
   name: string;
   quantity: number;
+  jarWeightOz: number;
   status: string;
   batchId?: string | null;
 };
 
-type AllocationLine = { productId: string; name: string; quantity: number };
+type AllocationLine = {
+  varietyId: string;
+  name: string;
+  quantity: number;
+  jarWeightOz: number;
+};
 
-export function stockByProduct(
-  batchLines: BatchLine[],
-  orderLines: OrderLine[],
+export function stockByVariety(
+  yieldLines: YieldLine[],
+  jarLines: JarLine[],
   allocationLines: AllocationLine[] = [],
 ): StockRow[] {
   const rows = new Map<string, StockRow>();
 
-  const row = (productId: string, name: string) => {
-    let existing = rows.get(productId);
+  const row = (varietyId: string, name: string) => {
+    let existing = rows.get(varietyId);
     if (!existing) {
       existing = {
-        productId,
+        varietyId,
         name,
         made: 0,
         delivered: 0,
@@ -53,42 +72,40 @@ export function stockByProduct(
         onHand: 0,
         spare: 0,
         short: 0,
-        untracked: 0,
         drawnDown: 0,
         allocated: 0,
+        untracked: 0,
       };
-      rows.set(productId, existing);
+      rows.set(varietyId, existing);
     }
     return existing;
   };
 
-  for (const line of batchLines) {
-    row(line.productId, line.name).made += line.quantity;
+  for (const line of yieldLines) {
+    row(line.varietyId, line.name).made += line.weightOz;
   }
 
-  for (const line of orderLines) {
+  for (const line of jarLines) {
     if (line.status === "CANCELLED") continue;
-    const target = row(line.productId, line.name);
+    const target = row(line.varietyId, line.name);
+    const weight = line.quantity * line.jarWeightOz;
+
     if (line.status !== "DELIVERED") {
-      target.committed += line.quantity;
+      target.committed += weight;
     } else {
-      target.delivered += line.quantity;
-      // A delivery only draws down recorded stock when it says which batch it
-      // came from. An unattributed one came from kimchi made before any of this
-      // was written down, so it must not eat into a batch recorded later.
-      if (line.batchId) target.drawnDown += line.quantity;
-      else target.untracked += line.quantity;
+      target.delivered += weight;
+      if (line.batchId) target.drawnDown += weight;
+      else target.untracked += weight;
     }
   }
 
   for (const line of allocationLines) {
-    row(line.productId, line.name).allocated += line.quantity;
+    row(line.varietyId, line.name).allocated += line.quantity * line.jarWeightOz;
   }
 
   for (const value of rows.values()) {
-    // Floored at zero: a jar that has left the kitchen — handed over, given
-    // away or kept — can reduce what is on hand but never create a future
-    // shortfall. Only undelivered promises do that.
+    // Floored at zero: kimchi that has left the kitchen can reduce what is on
+    // hand but never create a future shortfall. Only undelivered promises do.
     value.onHand = Math.max(value.made - value.drawnDown - value.allocated, 0);
     value.spare = Math.max(value.onHand - value.committed, 0);
     value.short = Math.max(value.committed - value.onHand, 0);

@@ -21,7 +21,8 @@ export type Stop = {
   batchCodes: string[];
 };
 
-export type ToMake = { productId: string; name: string; quantity: number };
+/** What the next cook has to contain, in weight. */
+export type ToMake = { varietyId: string; name: string; weightOz: number };
 
 export type Run = {
   ready: Stop[];
@@ -29,9 +30,9 @@ export type Run = {
   stops: number;
   jars: number;
   collect: number;
-  /** Jars owed on open orders that no batch covers yet. */
+  /** Weight owed on open orders that no batch covers yet. */
   toMake: ToMake[];
-  toMakeJars: number;
+  toMakeWeightOz: number;
 };
 
 function toStop(order: FullOrder): Stop {
@@ -57,11 +58,11 @@ function toStop(order: FullOrder): Stop {
 }
 
 /**
- * @param spareByProduct jars on hand and unclaimed, per product — subtracted
+ * @param spareByVariety ounces on hand and unclaimed, per kimchi — subtracted
  * from what open orders need so the make-list doesn't ask for kimchi that is
  * already sitting in the fridge.
  */
-export function buildRun(orders: FullOrder[], spareByProduct: Map<string, number> = new Map()): Run {
+export function buildRun(orders: FullOrder[], spareByVariety: Map<string, number> = new Map()): Run {
   const open = orders.filter((o) => o.status === "PENDING");
 
   // Oldest order first: whoever has waited longest gets handed their jars first.
@@ -74,31 +75,31 @@ export function buildRun(orders: FullOrder[], spareByProduct: Map<string, number
     (readinessOf(order).ready ? ready : waiting).push(toStop(order));
   }
 
-  // What the next cook needs: every unattached line on an open order, less any
-  // spare jars already made.
+  // What the next cook needs: the weight behind every unattached line on an
+  // open order, less any spare already made. The subtraction is carried across
+  // orders, so two orders cannot both be told the same spare pound covers them.
   const needed = new Map<string, ToMake>();
-  const spare = new Map(spareByProduct);
+  const spare = new Map(spareByVariety);
 
   for (const order of byAge) {
     for (const item of order.items) {
       if (item.batchId) continue;
-      const available = spare.get(item.productId) ?? 0;
-      const short = Math.max(item.quantity - available, 0);
-      spare.set(item.productId, Math.max(available - item.quantity, 0));
+      const varietyId = item.varietyId ?? item.productId;
+      const wanted = item.quantity * (item.jarWeightOz ?? 16);
+
+      const available = spare.get(varietyId) ?? 0;
+      const short = Math.max(wanted - available, 0);
+      spare.set(varietyId, Math.max(available - wanted, 0));
       if (short === 0) continue;
 
-      const row = needed.get(item.productId) ?? {
-        productId: item.productId,
-        name: item.name,
-        quantity: 0,
-      };
-      row.quantity += short;
-      needed.set(item.productId, row);
+      const row = needed.get(varietyId) ?? { varietyId, name: item.name, weightOz: 0 };
+      row.weightOz += short;
+      needed.set(varietyId, row);
     }
   }
 
   const toMake = [...needed.values()].sort(
-    (a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name),
+    (a, b) => b.weightOz - a.weightOz || a.name.localeCompare(b.name),
   );
 
   return {
@@ -108,6 +109,6 @@ export function buildRun(orders: FullOrder[], spareByProduct: Map<string, number
     jars: ready.reduce((sum, s) => sum + s.jars, 0),
     collect: ready.reduce((sum, s) => sum + s.collect, 0),
     toMake,
-    toMakeJars: toMake.reduce((sum, r) => sum + r.quantity, 0),
+    toMakeWeightOz: toMake.reduce((sum, r) => sum + r.weightOz, 0),
   };
 }

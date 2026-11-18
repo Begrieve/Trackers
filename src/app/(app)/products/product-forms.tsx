@@ -11,7 +11,49 @@ type Product = {
   unitLabel: string;
   unitPrice: number;
   active: boolean;
+  jarWeightOz: number;
+  varietyId: string | null;
 };
+
+export type Variety = { id: string; name: string };
+
+/** A jar is a size of some kimchi; batches are weighed against that kimchi. */
+function VarietyAndWeight({
+  varieties,
+  varietyId,
+  jarWeightOz,
+}: {
+  varieties: Variety[];
+  varietyId?: string | null;
+  jarWeightOz?: number;
+}) {
+  return (
+    <>
+      <input
+        name="variety"
+        required
+        list="variety-options"
+        className="field"
+        defaultValue={varieties.find((v) => v.id === varietyId)?.name ?? ""}
+        placeholder="Kimchi type, e.g. Napa cabbage kimchi"
+      />
+      <datalist id="variety-options">
+        {varieties.map((v) => (
+          <option key={v.id} value={v.name} />
+        ))}
+      </datalist>
+      <input
+        name="jarWeightOz"
+        required
+        inputMode="numeric"
+        className="field"
+        defaultValue={jarWeightOz ?? 16}
+        placeholder="16"
+        aria-label="Ounces of kimchi this jar holds"
+      />
+    </>
+  );
+}
 
 function Submit({ label, variant = "primary" }: { label: string; variant?: "primary" | "secondary" }) {
   const { pending } = useFormStatus();
@@ -26,7 +68,7 @@ function Submit({ label, variant = "primary" }: { label: string; variant?: "prim
   );
 }
 
-export function AddProduct() {
+export function AddProduct({ varieties }: { varieties: Variety[] }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(createProduct, {});
   const ref = useRef<HTMLFormElement>(null);
@@ -48,11 +90,15 @@ export function AddProduct() {
 
   return (
     <form ref={ref} action={formAction} className="card w-full space-y-3 p-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <input name="name" required className="field sm:col-span-1" placeholder="Napa kimchi — 32 oz" autoFocus />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <input name="name" required className="field" placeholder="Napa kimchi — 32 oz" autoFocus />
         <input name="price" required inputMode="decimal" className="field" placeholder="25.00" />
-        <input name="unitLabel" className="field" placeholder="jar" defaultValue="jar" />
+        <VarietyAndWeight varieties={varieties} />
       </div>
+      <p className="text-xs text-fg-subtle">
+        The weight is how much kimchi the jar holds, in ounces — a 16 oz jar takes about a pound.
+        Batches are weighed, and jars are filled from that weight.
+      </p>
 
       {state.error ? (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -70,7 +116,7 @@ export function AddProduct() {
   );
 }
 
-export function EditProduct({ product }: { product: Product }) {
+export function EditProduct({ product, varieties }: { product: Product; varieties: Variety[] }) {
   const [state, formAction] = useActionState<ActionState, FormData>(updateProduct, {});
 
   return (
@@ -85,6 +131,13 @@ export function EditProduct({ product }: { product: Product }) {
         defaultValue={(product.unitPrice / 100).toFixed(2)}
       />
       <input name="unitLabel" className="field w-24" defaultValue={product.unitLabel} />
+      <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
+        <VarietyAndWeight
+          varieties={varieties}
+          varietyId={product.varietyId}
+          jarWeightOz={product.jarWeightOz}
+        />
+      </div>
       <label className="flex items-center gap-2 text-sm text-fg-muted">
         <input type="checkbox" name="active" defaultChecked={product.active} className="h-4 w-4 accent-brand" />
         Active

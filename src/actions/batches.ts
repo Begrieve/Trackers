@@ -7,6 +7,7 @@ import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import type { ActionState } from "./customers";
 import { parseMoney } from "@/lib/money";
+import { parseWeight } from "@/lib/weight";
 import { batchCodePrefix, nextBatchCode } from "@/lib/batch-code";
 
 function parseDate(value: FormDataEntryValue | null): Date | null {
@@ -16,13 +17,19 @@ function parseDate(value: FormDataEntryValue | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function readLineItems(formData: FormData) {
-  const productIds = formData.getAll("productId").map(String);
-  const quantities = formData.getAll("quantity").map((q) => Number(String(q) || 0));
+/**
+ * What the cook produced: a weight for each kimchi type. Blank boxes are
+ * skipped, so a batch can be saved before it has been weighed.
+ */
+function readYields(formData: FormData) {
+  const varietyIds = formData.getAll("varietyId").map(String);
+  const weights = formData.getAll("weight").map(String);
 
-  return productIds
-    .map((productId, index) => ({ productId, quantity: quantities[index] ?? 0 }))
-    .filter((line) => line.productId && Number.isFinite(line.quantity) && line.quantity > 0);
+  return varietyIds
+    .map((varietyId, index) => ({ varietyId, raw: (weights[index] ?? "").trim() }))
+    .filter((line) => line.varietyId && line.raw !== "")
+    .map((line) => ({ varietyId: line.varietyId, weightOz: parseWeight(line.raw) }))
+    .filter((line) => line.weightOz > 0);
 }
 
 function readCosts(formData: FormData) {
@@ -53,16 +60,20 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
     String(formData.get("label") ?? "").trim() ||
     `Batch of ${madeOn.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
-  // A cook can be recorded before it is packed: the jar count comes later and
-  // is not knowable up front.
-  const lines = readLineItems(formData);
+  // A cook can be recorded before it is weighed: the weight comes later.
+  let lines: { varietyId: string; weightOz: number }[];
+  try {
+    lines = readYields(formData);
+  } catch {
+    return { error: "Enter each weight like 38 or 38.5 lb, or 12 oz." };
+  }
 
-  const products = await db.product.findMany({
-    where: { id: { in: lines.map((l) => l.productId) } },
+  const varieties = await db.variety.findMany({
+    where: { id: { in: lines.map((l) => l.varietyId) } },
   });
-  const byId = new Map(products.map((p) => [p.id, p]));
-  if (lines.some((l) => !byId.has(l.productId))) {
-    return { error: "One of those products no longer exists." };
+  const byId = new Map(varieties.map((v) => [v.id, v]));
+  if (lines.some((l) => !byId.has(l.varietyId))) {
+    return { error: "One of those kimchi types no longer exists." };
   }
 
   let costs: { label: string; amount: number }[];
@@ -79,10 +90,10 @@ export async function createBatch(_prev: ActionState, formData: FormData): Promi
     readyOn: parseDate(formData.get("readyOn")),
     notes: String(formData.get("notes") ?? "").trim() || null,
     createdById: user.id,
-    items: {
+    yields: {
       create: lines.map((line) => {
-        const product = byId.get(line.productId)!;
-        return { productId: product.id, name: product.name, quantity: line.quantity };
+        const variety = byId.get(line.varietyId)!;
+        return { varietyId: variety.id, name: variety.name, weightOz: line.weightOz };
       }),
     },
     costs: { create: costs },
@@ -118,17 +129,22 @@ export async function updateBatch(_prev: ActionState, formData: FormData): Promi
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Missing batch." };
 
-  const existing = await db.batch.findUnique({ where: { id }, include: { items: true } });
+  const existing = await db.batch.findUnique({ where: { id }, include: { yields: true } });
   if (!existing) return { error: "That batch no longer exists." };
 
-  const lines = readLineItems(formData);
+  let lines: { varietyId: string; weightOz: number }[];
+  try {
+    lines = readYields(formData);
+  } catch {
+    return { error: "Enter each weight like 38 or 38.5 lb, or 12 oz." };
+  }
 
-  const products = await db.product.findMany({
-    where: { id: { in: lines.map((l) => l.productId) } },
+  const varieties = await db.variety.findMany({
+    where: { id: { in: lines.map((l) => l.varietyId) } },
   });
-  const byId = new Map(products.map((p) => [p.id, p]));
-  if (lines.some((l) => !byId.has(l.productId))) {
-    return { error: "One of those products no longer exists." };
+  const byId = new Map(varieties.map((v) => [v.id, v]));
+  if (lines.some((l) => !byId.has(l.varietyId))) {
+    return { error: "One of those kimchi types no longer exists." };
   }
 
   let costs: { label: string; amount: number }[];
@@ -142,7 +158,7 @@ export async function updateBatch(_prev: ActionState, formData: FormData): Promi
   // Items and costs are replaced wholesale inside one transaction, so a failure
   // part-way cannot leave a batch holding half its old contents.
   await db.$transaction([
-    db.batchItem.deleteMany({ where: { batchId: id } }),
+    db.batchYield.deleteMany({ where: { batchId: id } }),
     db.batchCost.deleteMany({ where: { batchId: id } }),
     db.batch.update({
       where: { id },
@@ -151,10 +167,10 @@ export async function updateBatch(_prev: ActionState, formData: FormData): Promi
         madeOn: parseDate(formData.get("madeOn")) ?? existing.madeOn,
         readyOn: parseDate(formData.get("readyOn")),
         notes: String(formData.get("notes") ?? "").trim() || null,
-        items: {
+        yields: {
           create: lines.map((line) => {
-            const product = byId.get(line.productId)!;
-            return { productId: product.id, name: product.name, quantity: line.quantity };
+            const variety = byId.get(line.varietyId)!;
+            return { varietyId: variety.id, name: variety.name, weightOz: line.weightOz };
           }),
         },
         costs: { create: costs },
@@ -190,14 +206,14 @@ export async function fillOrdersFromBatch(formData: FormData): Promise<void> {
 
   const batch = await db.batch.findUnique({
     where: { id: batchId },
-    include: { items: { select: { productId: true } } },
+    include: { yields: { select: { varietyId: true } } },
   });
   if (!batch) return;
 
   await db.orderItem.updateMany({
     where: {
       orderId: { in: orderIds },
-      productId: { in: batch.items.map((i) => i.productId) },
+      varietyId: { in: batch.yields.map((y) => y.varietyId) },
     },
     data: { batchId },
   });
@@ -219,12 +235,12 @@ export async function fillOrderFromBatch(formData: FormData): Promise<void> {
   } else {
     const batch = await db.batch.findUnique({
       where: { id: batchId },
-      include: { items: { select: { productId: true } } },
+      include: { yields: { select: { varietyId: true } } },
     });
     if (!batch) return;
 
     await db.orderItem.updateMany({
-      where: { orderId, productId: { in: batch.items.map((i) => i.productId) } },
+      where: { orderId, varietyId: { in: batch.yields.map((y) => y.varietyId) } },
       data: { batchId },
     });
   }

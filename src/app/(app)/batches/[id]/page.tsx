@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/lib/scope";
 import { formatDate, formatMoney } from "@/lib/money";
 import { formatAge } from "@/lib/age";
-import { batchJars, batchTotalCost } from "@/lib/costing";
+import { formatWeight, jarsFrom, OZ_PER_LB } from "@/lib/weight";
+import { batchTotalCost, batchWeight } from "@/lib/costing";
 import { EmptyState, SectionHeading } from "@/components/ui";
 import { deleteBatch } from "@/actions/batches";
 import { FillOrders, type FillableOrder } from "./fill-orders";
@@ -20,7 +21,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
   const batch = await db.batch.findUnique({
     where: { id },
     include: {
-      items: { orderBy: { name: "asc" } },
+      yields: { orderBy: { name: "asc" } },
       costs: true,
       orderItems: {
         include: { order: { include: { customer: true } } },
@@ -32,22 +33,28 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
 
   if (!batch) notFound();
 
-  const madeProductIds = batch.items.map((i) => i.productId);
+  const madeVarietyIds = batch.yields.map((y) => y.varietyId);
 
-  // Orders that could plausibly have come from this batch: open, or delivered
-  // recently, and containing at least one product the batch actually made.
-  const candidates = await db.order.findMany({
-    where: {
-      status: { not: "CANCELLED" },
-      items: { some: { productId: { in: madeProductIds } } },
-    },
-    include: { customer: true, items: true },
-    orderBy: [{ status: "asc" }, { orderedAt: "desc" }],
-    take: 25,
-  });
+  const [candidates, products] = await Promise.all([
+    db.order.findMany({
+      where: {
+        status: { not: "CANCELLED" },
+        items: { some: { varietyId: { in: madeVarietyIds } } },
+      },
+      include: { customer: true, items: true },
+      orderBy: [{ status: "asc" }, { orderedAt: "desc" }],
+      take: 25,
+    }),
+    db.product.findMany({
+      where: { active: true, varietyId: { in: madeVarietyIds } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   const fillable: FillableOrder[] = candidates.map((order) => {
-    const relevant = order.items.filter((i) => madeProductIds.includes(i.productId));
+    const relevant = order.items.filter(
+      (i) => i.varietyId && madeVarietyIds.includes(i.varietyId),
+    );
     return {
       id: order.id,
       customerName: order.customer.name,
@@ -58,28 +65,37 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
     };
   });
 
-  const jars = batchJars(batch);
+  const totalMade = batchWeight(batch);
   const cost = batchTotalCost(batch);
-  const jarsOut = batch.orderItems.reduce((sum, i) => sum + i.quantity, 0);
-  const setAside = batch.allocations.reduce((sum, a) => sum + a.quantity, 0);
 
-  // What this batch still holds, per product: made, less what orders took and
-  // what was set aside. That is the ceiling on anything further set aside.
-  const allocatable: Allocatable[] = batch.items.map((item) => {
-    const toOrders = batch.orderItems
-      .filter((o) => o.productId === item.productId)
-      .reduce((sum, o) => sum + o.quantity, 0);
+  const weightOut = batch.orderItems.reduce((sum, i) => sum + i.quantity * i.jarWeightOz, 0);
+  const weightAside = batch.allocations.reduce((sum, a) => sum + a.quantity * a.jarWeightOz, 0);
+
+  // What is left of each kimchi this batch made, and the jars it could fill.
+  const remainingByVariety = batch.yields.map((y) => {
+    const out = batch.orderItems
+      .filter((i) => i.varietyId === y.varietyId)
+      .reduce((sum, i) => sum + i.quantity * i.jarWeightOz, 0);
     const aside = batch.allocations
-      .filter((a) => a.productId === item.productId)
-      .reduce((sum, a) => sum + a.quantity, 0);
-    return {
-      productId: item.productId,
-      name: item.name,
-      remaining: Math.max(item.quantity - toOrders - aside, 0),
-    };
+      .filter((a) => a.varietyId === y.varietyId)
+      .reduce((sum, a) => sum + a.quantity * a.jarWeightOz, 0);
+    return { ...y, remainingOz: Math.max(y.weightOz - out - aside, 0) };
   });
 
-  const unaccounted = allocatable.reduce((sum, r) => sum + r.remaining, 0);
+  const unaccounted = remainingByVariety.reduce((sum, r) => sum + r.remainingOz, 0);
+
+  // Jars of each size the leftovers could still fill.
+  const allocatable: Allocatable[] = products
+    .map((product) => {
+      const left =
+        remainingByVariety.find((r) => r.varietyId === product.varietyId)?.remainingOz ?? 0;
+      return {
+        productId: product.id,
+        name: product.name,
+        remaining: jarsFrom(left, product.jarWeightOz),
+      };
+    })
+    .filter((row) => row.remaining > 0);
 
   return (
     <div className="space-y-6">
@@ -100,39 +116,109 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       <div className="flex flex-wrap gap-3">
         <Link
           href={`/batches/${batch.id}/edit`}
-          className={batch.items.length === 0 ? "btn-primary" : "btn-secondary"}
+          className={batch.yields.length === 0 ? "btn-primary" : "btn-secondary"}
         >
-          {batch.items.length === 0 ? "Record the yield" : "Edit batch"}
+          {batch.yields.length === 0 ? "Record the weight" : "Edit batch"}
         </Link>
       </div>
 
-      {batch.items.length > 0 ? (
+      {batch.yields.length > 0 ? (
         <AllocateJars batchId={batch.id} rows={allocatable} />
       ) : null}
 
       <section className="card p-4">
-        <h2 className="mb-3 font-bold text-fg">Where the jars went</h2>
-        <ul className="divide-y divide-line">
-          <li className="flex items-center justify-between gap-3 py-2.5">
-            <span className="text-sm text-fg">To orders</span>
-            <span className="font-semibold tabular-nums text-fg">{jarsOut}</span>
-          </li>
-          <li className="flex items-center justify-between gap-3 py-2.5">
-            <span className="text-sm text-fg">Set aside</span>
-            <span className="font-semibold tabular-nums text-fg">{setAside}</span>
-          </li>
-          <li className="flex items-center justify-between gap-3 py-2.5">
-            <span className="text-sm text-fg">Still in this batch</span>
-            <span className="font-semibold tabular-nums text-fg">{unaccounted}</span>
-          </li>
-        </ul>
-        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-          <span className="text-sm font-semibold text-fg-muted">
-            {unaccounted === 0 && jars > 0 ? "Fully accounted for" : "Made"}
-          </span>
-          <span className="text-lg font-bold tabular-nums text-fg">{jars}</span>
-        </div>
+        <h2 className="mb-3 font-bold text-fg">What it made</h2>
+        {batch.yields.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-warn-line bg-warn-soft/40 p-4 text-sm text-warn-fg">
+            <p className="font-semibold">Not weighed yet.</p>
+            <p className="mt-1">
+              This cook is logged but counts as no stock until you record how much it made.
+            </p>
+            <Link href={`/batches/${batch.id}/edit`} className="btn-primary mt-3">
+              Record the weight
+            </Link>
+          </div>
+        ) : (
+          <>
+            <ul className="divide-y divide-line">
+              {remainingByVariety.map((y) => (
+                <li key={y.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-fg">{y.name}</p>
+                    <p className="text-xs text-fg-muted">
+                      {formatWeight(y.remainingOz)} left
+                    </p>
+                  </div>
+                  <p className="font-semibold tabular-nums text-fg">{formatWeight(y.weightOz)}</p>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+              <span className="text-sm font-semibold text-fg-muted">Total made</span>
+              <span className="text-lg font-bold tabular-nums text-fg">
+                {formatWeight(totalMade)}
+              </span>
+            </div>
+          </>
+        )}
       </section>
+
+      {batch.costs.length > 0 ? (
+        <section className="card p-4">
+          <h2 className="mb-3 font-bold text-fg">What it cost</h2>
+          <ul className="divide-y divide-line">
+            {batch.costs.map((row) => (
+              <li key={row.id} className="flex items-center justify-between gap-3 py-2.5">
+                <p className="truncate text-sm text-fg">{row.label}</p>
+                <p className="tabular-nums text-fg">{formatMoney(row.amount)}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+            <span className="text-sm font-semibold text-fg-muted">Total</span>
+            <span className="text-lg font-bold tabular-nums text-fg">
+              {formatMoney(cost)}
+              {totalMade > 0 ? (
+                <span className="ml-2 text-sm font-normal text-fg-muted">
+                  {formatMoney(Math.round((cost / totalMade) * OZ_PER_LB))}/lb
+                </span>
+              ) : null}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
+      {batch.yields.length > 0 ? (
+        <section className="card p-4">
+          <h2 className="mb-3 font-bold text-fg">Where it went</h2>
+          <ul className="divide-y divide-line">
+            <li className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-sm text-fg">Filled into orders</span>
+              <span className="font-semibold tabular-nums text-fg">{formatWeight(weightOut)}</span>
+            </li>
+            <li className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-sm text-fg">Set aside</span>
+              <span className="font-semibold tabular-nums text-fg">
+                {formatWeight(weightAside)}
+              </span>
+            </li>
+            <li className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-sm text-fg">Still in this batch</span>
+              <span className="font-semibold tabular-nums text-fg">
+                {formatWeight(unaccounted)}
+              </span>
+            </li>
+          </ul>
+          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+            <span className="text-sm font-semibold text-fg-muted">
+              {unaccounted === 0 && totalMade > 0 ? "Fully accounted for" : "Made"}
+            </span>
+            <span className="text-lg font-bold tabular-nums text-fg">
+              {formatWeight(totalMade)}
+            </span>
+          </div>
+        </section>
+      ) : null}
 
       {batch.allocations.length > 0 ? (
         <section className="card p-4">
@@ -145,7 +231,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
                     <span className="font-semibold tabular-nums">{a.quantity} ×</span> {a.name}
                   </p>
                   <p className="text-xs text-fg-muted">
-                    {ALLOCATION_LABEL[a.kind]}
+                    {ALLOCATION_LABEL[a.kind]} · {formatWeight(a.quantity * a.jarWeightOz)}
                     {a.note ? ` · ${a.note}` : ""}
                   </p>
                 </div>
@@ -164,69 +250,14 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
         </section>
       ) : null}
 
-      <section className="card p-4">
-        <h2 className="mb-3 font-bold text-fg">What it made</h2>
-        {batch.items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-warn-line bg-warn-soft/40 p-4 text-sm text-warn-fg">
-            <p className="font-semibold">Yield not recorded yet.</p>
-            <p className="mt-1">
-              This cook is logged but not counted as stock until you enter how many jars came out
-              of it.
-            </p>
-            <Link href={`/batches/${batch.id}/edit`} className="btn-primary mt-3">
-              Record the yield
-            </Link>
-          </div>
-        ) : null}
-        <ul className="divide-y divide-line">
-          {batch.items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
-              <p className="truncate text-sm font-medium text-fg">{item.name}</p>
-              <p className="font-semibold tabular-nums text-fg">{item.quantity}</p>
-            </li>
-          ))}
-        </ul>
-        {batch.items.length > 0 ? (
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span className="text-sm font-semibold text-fg-muted">Total jars</span>
-            <span className="text-lg font-bold tabular-nums text-fg">{jars}</span>
-          </div>
-        ) : null}
-      </section>
-
-      {batch.costs.length > 0 ? (
-        <section className="card p-4">
-          <h2 className="mb-3 font-bold text-fg">What it cost</h2>
-          <ul className="divide-y divide-line">
-            {batch.costs.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3 py-2.5">
-                <p className="truncate text-sm text-fg">{row.label}</p>
-                <p className="tabular-nums text-fg">{formatMoney(row.amount)}</p>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span className="text-sm font-semibold text-fg-muted">Total</span>
-            <span className="text-lg font-bold tabular-nums text-fg">
-              {formatMoney(cost)}
-              {jars > 0 ? (
-                <span className="ml-2 text-sm font-normal text-fg-muted">
-                  {formatMoney(Math.round(cost / jars))}/jar
-                </span>
-              ) : null}
-            </span>
-          </div>
-        </section>
-      ) : null}
-
       <FillOrders batchId={batch.id} code={batch.code} orders={fillable} />
 
       <section>
         <SectionHeading
           title="Who got jars from this batch"
           subtitle={
-            jarsOut > 0
-              ? `${jarsOut} of ${jars} jars traced to an order`
+            weightOut > 0
+              ? `${formatWeight(weightOut)} of ${formatWeight(totalMade)} traced to an order`
               : "Assign this batch on an order to trace it"
           }
         />
@@ -246,7 +277,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-fg">{item.order.customer.name}</p>
                   <p className="mt-0.5 truncate text-sm text-fg-muted">
-                    {item.quantity} × {item.name} · ordered {formatDate(item.order.orderedAt)}
+                    {item.quantity} × {item.name} · {formatWeight(item.quantity * item.jarWeightOz)}
                   </p>
                 </div>
                 <span className="shrink-0 text-sm font-medium text-fg-muted">View →</span>

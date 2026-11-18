@@ -11,13 +11,9 @@ export default async function EditBatchPage({ params }: { params: Promise<{ id: 
   const db = await getDb();
   const { id } = await params;
 
-  const [batch, products] = await Promise.all([
-    db.batch.findUnique({ where: { id }, include: { items: true, costs: true } }),
-    db.product.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, unitLabel: true },
-    }),
+  const [batch, varieties] = await Promise.all([
+    db.batch.findUnique({ where: { id }, include: { yields: true, costs: true } }),
+    db.variety.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   if (!batch) notFound();
@@ -30,13 +26,13 @@ export default async function EditBatchPage({ params }: { params: Promise<{ id: 
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-fg">Edit batch</h1>
         <p className="text-sm text-fg-muted">
-          Change the details, costs or jar counts as often as you need. The code {batch.code} stays
+          Change the details, costs or weights as often as you need. The code {batch.code} stays
           the same, so anything already traced to it stays traced.
         </p>
       </div>
 
       <BatchForm
-        products={products}
+        varieties={varieties}
         action={updateBatch}
         defaultMadeOn={toDateInputValue(new Date())}
         submitLabel="Save changes"
@@ -47,7 +43,7 @@ export default async function EditBatchPage({ params }: { params: Promise<{ id: 
           madeOn: batch.madeOn,
           readyOn: batch.readyOn,
           notes: batch.notes,
-          items: batch.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          yields: batch.yields.map((y) => ({ varietyId: y.varietyId, weightOz: y.weightOz })),
           costs: batch.costs.map((c) => ({ label: c.label, amount: c.amount })),
         }}
       />

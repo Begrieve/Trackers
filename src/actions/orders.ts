@@ -92,6 +92,8 @@ export async function createOrder(_prev: ActionState, formData: FormData): Promi
             name: product.name,
             quantity: line.quantity,
             unitPrice: product.unitPrice,
+            varietyId: product.varietyId,
+            jarWeightOz: product.jarWeightOz,
           };
         }),
       },
@@ -330,6 +332,8 @@ export async function updateOrderItems(_prev: ActionState, formData: FormData): 
               name: before?.name ?? product.name,
               quantity: line.quantity,
               unitPrice: before?.unitPrice ?? product.unitPrice,
+              varietyId: before?.varietyId ?? product.varietyId,
+              jarWeightOz: before?.jarWeightOz ?? product.jarWeightOz,
               batchId: before?.batchId ?? null,
             };
           }),

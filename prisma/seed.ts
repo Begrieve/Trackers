@@ -65,14 +65,30 @@ async function main() {
 
   const count = await prisma.product.count();
   if (count === 0) {
-    await prisma.product.createMany({
-      data: [
-        { name: "Napa cabbage kimchi — 32 oz", unitLabel: "jar", unitPrice: 2500 },
-        { name: "Napa cabbage kimchi — 16 oz", unitLabel: "jar", unitPrice: 1500 },
-        { name: "Cucumber kimchi (oi sobagi) — 16 oz", unitLabel: "jar", unitPrice: 1600 },
-        { name: "Radish kimchi (kkakdugi) — 16 oz", unitLabel: "jar", unitPrice: 1600 },
-      ],
-    });
+    // Jar sizes belong to a kimchi type; batches are weighed against the type.
+    const starters = [
+      { variety: "Napa cabbage kimchi", jarWeightOz: 32, unitPrice: 2500 },
+      { variety: "Napa cabbage kimchi", jarWeightOz: 16, unitPrice: 1500 },
+      { variety: "Cucumber kimchi (oi sobagi)", jarWeightOz: 16, unitPrice: 1600 },
+      { variety: "Radish kimchi (kkakdugi)", jarWeightOz: 16, unitPrice: 1600 },
+    ];
+
+    for (const starter of starters) {
+      const variety = await prisma.variety.upsert({
+        where: { name: starter.variety },
+        update: {},
+        create: { name: starter.variety },
+      });
+      await prisma.product.create({
+        data: {
+          name: `${starter.variety} — ${starter.jarWeightOz} oz`,
+          varietyId: variety.id,
+          jarWeightOz: starter.jarWeightOz,
+          unitLabel: "jar",
+          unitPrice: starter.unitPrice,
+        },
+      });
+    }
     console.log("seeded starter product list");
   }
 }

@@ -1,7 +1,12 @@
 import type { Order, OrderItem, Payment, Customer } from "@prisma/client";
 
 export type FullOrder = Order & {
-  items: (OrderItem & { batch?: { code: string } | null })[];
+  items: (OrderItem & {
+    batch?: { code: string } | null;
+    /** Carried from the product so stock and cost can be weighed. */
+    varietyId?: string | null;
+    jarWeightOz?: number | null;
+  })[];
   payments: Payment[];
   customer: Customer;
 };
