@@ -1,6 +1,13 @@
 import { orderMath, type FullOrder } from "./ledger";
 import { methodLabel } from "./payment-methods";
-import { batchTotalCost, costOfGoodsSold, marginPercent, unitCosts, type CostedBatch } from "./costing";
+import {
+  batchTotalCost,
+  costOfGoodsSold,
+  costOfJar,
+  marginPercent,
+  unitCosts,
+  type CostedBatch,
+} from "./costing";
 
 export type Range = { from: Date; to: Date };
 
@@ -90,7 +97,8 @@ export type Report = {
   collected: number;
   /** Still owed on orders placed inside the range. */
   outstanding: number;
-  jarsMade: number;
+  /** Ounces made in the range. */
+  weightMade: number;
   batchCount: number;
   /** Cash spent on batches made inside the range. */
   batchSpend: number;
@@ -112,7 +120,7 @@ export type Report = {
 
 type ReportBatch = CostedBatch & {
   madeOn: Date;
-  allocations?: { productId: string; quantity: number }[];
+  allocations?: { varietyId: string | null; quantity: number; jarWeightOz: number }[];
 };
 
 export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: Range): Report {
@@ -128,7 +136,7 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
   let jars = 0;
   let billed = 0;
   let outstanding = 0;
-  const soldItems: { productId: string; quantity: number }[] = [];
+  const soldItems: { varietyId: string; quantity: number; jarWeightOz: number }[] = [];
 
   for (const order of scoped) {
     const math = orderMath(order);
@@ -154,7 +162,11 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
     for (const item of order.items) {
       jars += item.quantity;
       person.jars += item.quantity;
-      soldItems.push({ productId: item.productId, quantity: item.quantity });
+      soldItems.push({
+        varietyId: item.varietyId ?? item.productId,
+        quantity: item.quantity,
+        jarWeightOz: item.jarWeightOz ?? 16,
+      });
 
       const row =
         products.get(item.name) ??
@@ -162,7 +174,7 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
       row.quantity += item.quantity;
       row.revenue += item.quantity * item.unitPrice;
       row.orders += 1;
-      row.cost += (costs.get(item.productId)?.perJar ?? 0) * item.quantity;
+      row.cost += costOfJar(costs.get(item.varietyId ?? item.productId), item.jarWeightOz ?? 16) * item.quantity;
       products.set(item.name, row);
     }
 
@@ -192,7 +204,11 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
   // Jars kept, given away or lost: they cost what they cost, and no sale will
   // ever cover them. Reported on their own rather than folded into margin,
   // which measures what was sold.
-  const setAside = scopedBatches.flatMap((b) => b.allocations ?? []);
+  const setAside = scopedBatches
+    .flatMap((b) => b.allocations ?? [])
+    .filter((a): a is { varietyId: string; quantity: number; jarWeightOz: number } =>
+      Boolean(a.varietyId),
+    );
   const setAsideResult = costOfGoodsSold(setAside, costs);
   const setAsideJars = setAside.reduce((sum, a) => sum + a.quantity, 0);
 
@@ -208,7 +224,7 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
     billed,
     collected,
     outstanding,
-    jarsMade: scopedBatches.reduce((sum, b) => sum + b.items.reduce((n, i) => n + i.quantity, 0), 0),
+    weightMade: scopedBatches.reduce((sum, b) => sum + b.yields.reduce((n, y) => n + y.weightOz, 0), 0),
     batchCount: scopedBatches.length,
     batchSpend: scopedBatches.reduce((sum, b) => sum + batchTotalCost(b), 0),
     cogs: cogsResult.cost,

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { buildReport, parseRange, PRESETS, type PresetKey } from "@/lib/reports";
 import { formatDate, formatMoney, toDateInputValue } from "@/lib/money";
+import { formatWeight } from "@/lib/weight";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +27,9 @@ export default async function ReportsPage({
     db.batch.findMany({
       select: {
         madeOn: true,
-        items: { select: { productId: true, quantity: true } },
+        yields: { select: { varietyId: true, weightOz: true } },
         costs: { select: { amount: true } },
-        allocations: { select: { productId: true, quantity: true } },
+        allocations: { select: { varietyId: true, quantity: true, jarWeightOz: true } },
       },
     }),
   ]);
@@ -119,7 +120,7 @@ export default async function ReportsPage({
           hint="On orders from this period"
           tone="rose"
         />
-        <StatCard label="Jars made" value={String(report.jarsMade)} hint={`${report.batchCount} ${report.batchCount === 1 ? "batch" : "batches"}`} />
+        <StatCard label="Made" value={formatWeight(report.weightMade)} hint={`${report.batchCount} ${report.batchCount === 1 ? "batch" : "batches"}`} />
         <StatCard label="People served" value={String(report.people.length)} />
         <StatCard
           label="Avg order"

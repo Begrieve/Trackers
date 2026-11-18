@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getDb } from "@/lib/scope";
-import { stockByProduct } from "@/lib/stock";
+import { stockByVariety } from "@/lib/stock";
+import { shelfByVariety } from "@/lib/shelf";
 import { formatDate, formatMoney } from "@/lib/money";
 import { formatAge, shortAge } from "@/lib/age";
-import { shelfByProduct } from "@/lib/shelf";
-import { batchJars, batchTotalCost, unitCosts } from "@/lib/costing";
+import { formatWeight, jarsFrom, OZ_PER_LB } from "@/lib/weight";
+import { batchTotalCost, batchWeight, unitCosts } from "@/lib/costing";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { SetAsideJars } from "@/components/set-aside-jars";
 
@@ -12,49 +13,59 @@ export const dynamic = "force-dynamic";
 
 export default async function BatchesPage() {
   const db = await getDb();
-  const [batches, batchItems, orderItems, allocations] = await Promise.all([
+
+  const [batches, orderItems, allocations, products] = await Promise.all([
     db.batch.findMany({
       include: {
-        items: { orderBy: { name: "asc" } },
+        yields: { orderBy: { name: "asc" } },
         costs: true,
         allocations: true,
-        orderItems: { select: { productId: true, quantity: true } },
+        orderItems: { select: { varietyId: true, quantity: true, jarWeightOz: true } },
       },
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
-    db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
     db.orderItem.findMany({
       select: {
-        productId: true,
+        varietyId: true,
         name: true,
         quantity: true,
+        jarWeightOz: true,
         batchId: true,
         order: { select: { status: true } },
       },
     }),
-    db.batchAllocation.findMany({ select: { productId: true, name: true, quantity: true } }),
+    db.batchAllocation.findMany({
+      select: { varietyId: true, name: true, quantity: true, jarWeightOz: true },
+    }),
+    db.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
-  const stock = stockByProduct(
-    batchItems,
-    orderItems.map((i) => ({
-      productId: i.productId,
-      name: i.name,
-      quantity: i.quantity,
-      batchId: i.batchId,
-      status: i.order.status,
-    })),
-    allocations,
+  const stock = stockByVariety(
+    batches.flatMap((b) => b.yields),
+    orderItems
+      .filter((i) => i.varietyId)
+      .map((i) => ({
+        varietyId: i.varietyId!,
+        name: i.name,
+        quantity: i.quantity,
+        jarWeightOz: i.jarWeightOz,
+        batchId: i.batchId,
+        status: i.order.status,
+      })),
+    allocations
+      .filter((a) => a.varietyId)
+      .map((a) => ({
+        varietyId: a.varietyId!,
+        name: a.name,
+        quantity: a.quantity,
+        jarWeightOz: a.jarWeightOz,
+      })),
   );
 
-  const costPerJar = unitCosts(
-    batches.map((b) => ({
-      items: b.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-      costs: b.costs,
-    })),
-  );
+  const costPerOz = unitCosts(batches);
+  const shelf = new Map(shelfByVariety(batches).map((row) => [row.varietyId, row]));
+
   const totalSpend = batches.reduce((sum, b) => sum + batchTotalCost(b), 0);
-
   const totalMade = stock.reduce((sum, r) => sum + r.made, 0);
   const totalSpare = stock.reduce((sum, r) => sum + r.spare, 0);
   const totalShort = stock.reduce((sum, r) => sum + r.short, 0);
@@ -62,9 +73,17 @@ export default async function BatchesPage() {
   const totalUntracked = stock.reduce((sum, r) => sum + r.untracked, 0);
   const totalAllocated = stock.reduce((sum, r) => sum + r.allocated, 0);
 
-  // How old the oldest jar of each product still on the shelf is.
-  const shelf = new Map(shelfByProduct(batches).map((row) => [row.productId, row]));
-  const awaitingYield = batches.filter((b) => b.items.length === 0);
+  const awaitingWeight = batches.filter((b) => b.yields.length === 0);
+
+  // Jars the spare weight of each kimchi could fill, per jar size.
+  const jarsFromSpare = (varietyId: string) =>
+    products
+      .filter((p) => p.varietyId === varietyId)
+      .map((p) => ({
+        name: p.name,
+        jars: jarsFrom(stock.find((s) => s.varietyId === varietyId)?.spare ?? 0, p.jarWeightOz),
+      }))
+      .filter((row) => row.jars > 0);
 
   return (
     <div className="space-y-8">
@@ -80,36 +99,40 @@ export default async function BatchesPage() {
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="Jars made"
-          value={String(totalMade)}
-          hint={totalSpend > 0 ? `${formatMoney(totalSpend)} spent making them` : "Across every batch"}
+          label="Made"
+          value={formatWeight(totalMade)}
+          hint={totalSpend > 0 ? `${formatMoney(totalSpend)} spent making it` : "Across every batch"}
         />
         <StatCard
           label="Promised"
-          value={String(totalCommitted)}
+          value={formatWeight(totalCommitted)}
           hint="On orders not yet delivered"
           tone="violet"
         />
         <StatCard
           label="Spare"
-          value={String(totalSpare)}
-          hint={totalAllocated > 0 ? `${totalAllocated} set aside, not counted` : "On hand, unclaimed"}
+          value={formatWeight(totalSpare)}
+          hint={
+            totalAllocated > 0
+              ? `${formatWeight(totalAllocated)} set aside, not counted`
+              : "On hand, unclaimed"
+          }
           tone="emerald"
         />
         <StatCard
           label="Short"
-          value={String(totalShort)}
+          value={formatWeight(totalShort)}
           hint={totalShort > 0 ? "Still to make for open orders" : "Every open order is covered"}
           tone={totalShort > 0 ? "rose" : "neutral"}
         />
       </section>
 
-      {awaitingYield.length > 0 ? (
+      {awaitingWeight.length > 0 ? (
         <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
-          {awaitingYield.length} {awaitingYield.length === 1 ? "batch has" : "batches have"} no
-          yield recorded yet, so {awaitingYield.length === 1 ? "it does" : "they do"} not count as
+          {awaitingWeight.length} {awaitingWeight.length === 1 ? "batch has" : "batches have"} no
+          weight recorded yet, so {awaitingWeight.length === 1 ? "it does" : "they do"} not count as
           stock.{" "}
-          {awaitingYield.map((b, i) => (
+          {awaitingWeight.map((b, i) => (
             <span key={b.id}>
               {i > 0 ? ", " : ""}
               <Link href={`/batches/${b.id}/edit`} className="font-semibold underline">
@@ -123,59 +146,85 @@ export default async function BatchesPage() {
 
       {totalUntracked > 0 ? (
         <p className="card border-warn-line bg-warn-soft/50 p-4 text-sm text-warn-fg">
-          {totalUntracked} {totalUntracked === 1 ? "jar has" : "jars have"} been delivered from
-          stock with no batch behind{" "}
-          {totalUntracked === 1 ? "it" : "them"} — cooks from before you started recording
-          batches. They are not counted as short, because they have already been handed over. To
-          account for them, record a batch dated when you made them.
+          {formatWeight(totalUntracked)} has been delivered from stock with no batch behind it —
+          cooks from before you started recording batches. It is not counted as short, because it
+          has already been handed over. To account for it, record a batch dated when you made it.
         </p>
       ) : null}
 
       <SetAsideJars
-        rows={stock.map((row) => ({ productId: row.productId, name: row.name, spare: row.spare }))}
+        rows={products
+          .filter((p) => p.varietyId)
+          .map((p) => ({
+            productId: p.id,
+            name: p.name,
+            spare: jarsFrom(
+              stock.find((s) => s.varietyId === p.varietyId)?.spare ?? 0,
+              p.jarWeightOz,
+            ),
+          }))}
       />
 
       <section>
-        <SectionHeading title="Where each product stands" subtitle="On hand is what you made and still hold" />
+        <SectionHeading
+          title="Where each kimchi stands"
+          subtitle="On hand is what you made and still hold"
+        />
         {stock.length === 0 ? (
           <EmptyState>Record a batch or two and this fills in.</EmptyState>
         ) : (
           <div className="card divide-y divide-line">
-            {stock.map((row) => (
-              <div key={row.productId} className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="font-semibold text-fg">{row.name}</p>
-                  <p className="mt-0.5 text-sm text-fg-muted">
-                    {row.made} made · {row.delivered} delivered · {row.committed} promised
-                  </p>
-                  {shelf.get(row.productId)?.oldest ? (
+            {stock.map((row) => {
+              const perOz = costPerOz.get(row.varietyId)?.perOz ?? 0;
+              return (
+                <div key={row.varietyId} className="flex items-start justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-fg">{row.name}</p>
                     <p className="mt-0.5 text-sm text-fg-muted">
-                      Oldest on the shelf: {formatAge(shelf.get(row.productId)!.oldest!.madeOn)} ·{" "}
-                      <span className="font-mono text-xs">
-                        {shelf.get(row.productId)!.oldest!.code}
-                      </span>
+                      {formatWeight(row.made)} made · {formatWeight(row.delivered)} delivered ·{" "}
+                      {formatWeight(row.committed)} promised
                     </p>
-                  ) : null}
-                  {row.untracked > 0 ? (
-                    <p className="mt-0.5 text-sm text-warn">
-                      {row.untracked} delivered with no batch recorded
-                    </p>
-                  ) : null}
-                  {(costPerJar.get(row.productId)?.perJar ?? 0) > 0 ? (
-                    <p className="mt-0.5 text-sm text-fg-subtle">
-                      {formatMoney(costPerJar.get(row.productId)!.perJar)} per jar to make
-                    </p>
-                  ) : null}
+                    {shelf.get(row.varietyId)?.oldest ? (
+                      <p className="mt-0.5 text-sm text-fg-muted">
+                        Oldest on the shelf: {formatAge(shelf.get(row.varietyId)!.oldest!.madeOn)} ·{" "}
+                        <span className="font-mono text-xs">
+                          {shelf.get(row.varietyId)!.oldest!.code}
+                        </span>
+                      </p>
+                    ) : null}
+                    {jarsFromSpare(row.varietyId).length > 0 ? (
+                      <p className="mt-0.5 text-sm text-fg-subtle">
+                        Spare fills{" "}
+                        {jarsFromSpare(row.varietyId)
+                          .map((j) => `${j.jars} × ${j.name}`)
+                          .join(", ")}
+                      </p>
+                    ) : null}
+                    {row.untracked > 0 ? (
+                      <p className="mt-0.5 text-sm text-warn">
+                        {formatWeight(row.untracked)} delivered with no batch recorded
+                      </p>
+                    ) : null}
+                    {perOz > 0 ? (
+                      <p className="mt-0.5 text-sm text-fg-subtle">
+                        {formatMoney(Math.round(perOz * OZ_PER_LB))} per pound to make
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {row.short > 0 ? (
+                      <p className="font-bold tabular-nums text-danger">
+                        {formatWeight(row.short)} short
+                      </p>
+                    ) : (
+                      <p className="font-bold tabular-nums text-success">
+                        {formatWeight(row.spare)} spare
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  {row.short > 0 ? (
-                    <p className="font-bold tabular-nums text-danger">{row.short} short</p>
-                  ) : (
-                    <p className="font-bold tabular-nums text-success">{row.spare} spare</p>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -193,7 +242,8 @@ export default async function BatchesPage() {
         ) : (
           <div className="space-y-3">
             {batches.map((batch) => {
-              const jars = batchJars(batch);
+              const made = batchWeight(batch);
+              const cost = batchTotalCost(batch);
               return (
                 <div key={batch.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -216,35 +266,35 @@ export default async function BatchesPage() {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      {batch.items.length === 0 ? (
-                        <p className="font-semibold text-warn">Yield not recorded</p>
+                      {batch.yields.length === 0 ? (
+                        <p className="font-semibold text-warn">Not weighed</p>
                       ) : (
-                        <p className="font-bold tabular-nums text-fg">
-                          {jars} {jars === 1 ? "jar" : "jars"}
-                        </p>
+                        <p className="font-bold tabular-nums text-fg">{formatWeight(made)}</p>
                       )}
-                      {batchTotalCost(batch) > 0 ? (
+                      {cost > 0 ? (
                         <p className="text-sm tabular-nums text-fg-muted">
-                          {formatMoney(batchTotalCost(batch))}
-                          {jars > 0 ? ` · ${formatMoney(Math.round(batchTotalCost(batch) / jars))}/jar` : ""}
+                          {formatMoney(cost)}
+                          {made > 0
+                            ? ` · ${formatMoney(Math.round((cost / made) * OZ_PER_LB))}/lb`
+                            : ""}
                         </p>
                       ) : null}
                     </div>
                   </div>
 
                   <ul className="mt-3 flex flex-wrap gap-2">
-                    {batch.items.map((item) => (
-                      <li key={item.id} className="pill bg-surface-2 text-fg-muted ring-line">
-                        {item.quantity} × {item.name}
+                    {batch.yields.map((y) => (
+                      <li key={y.id} className="pill bg-surface-2 text-fg-muted ring-line">
+                        {formatWeight(y.weightOz)} {y.name}
                       </li>
                     ))}
                   </ul>
 
                   {batch.costs.length > 0 ? (
                     <ul className="mt-2 flex flex-wrap gap-2">
-                      {batch.costs.map((cost) => (
-                        <li key={cost.id} className="text-xs text-fg-subtle">
-                          {cost.label} {formatMoney(cost.amount)}
+                      {batch.costs.map((c) => (
+                        <li key={c.id} className="text-xs text-fg-subtle">
+                          {c.label} {formatMoney(c.amount)}
                         </li>
                       ))}
                     </ul>

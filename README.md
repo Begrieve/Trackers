@@ -32,12 +32,24 @@ All money is stored in integer cents, so no rounding drift.
 
 ## Batches
 
-**Batches** records what you actually made — jars per product, the date, and notes.
+**Batches** records what you actually made — the **weight** of each kimchi, the date,
+and notes. Jars are filled from that weight when you assign orders, which is the way
+round it actually happens: you cook a quantity of kimchi, then decide what goes into
+16 oz or 32 oz jars as orders come in.
+
+A 16 oz jar holds about a pound, so a 38 lb cook is 38 small jars, or 19 large ones,
+or any mix. The app shows those equivalents rather than making you choose up front —
+and a jar size added later draws from cooks already recorded, with nothing to restate.
+
+Weight is stored as whole ounces, for the same reason money is stored as whole cents:
+a batch is added to, drawn down and divided repeatedly, and fractions of a pound would
+drift. A pound is exactly 16 ounces, so nothing is lost.
+
 Set against your orders, it answers the question a ledger alone can't:
 
-- **On hand** — made, minus deliveries that named the batch they came from
-- **Spare** — on hand beyond what open orders have claimed
-- **Short** — open orders beyond what's on hand, so you know what to cook
+- **On hand** — weight made, minus what left in jars on traced deliveries
+- **Spare** — on hand beyond what open orders have claimed, with the jars it would fill
+- **Short** — promised beyond what's on hand, so you know how much more to cook
 
 Two rules keep those honest:
 
@@ -100,18 +112,17 @@ visible without opening a report.
   mother was never going to be revenue, so folding it into the margin would just make
   the figure lie.
 
-### Recording the yield afterwards
+### Recording the weight afterwards
 
-A cook can be logged before it's packed. Yield varies from batch to batch and isn't
-knowable up front, so the form runs in the order you actually learn things — details
-first, then cost, then the jar counts last — and the counts are optional: save the
-batch on the day it's made, then **Record the yield** once you know how many jars came
-out.
+A cook can be logged before it's weighed. The form runs in the order you actually
+learn things — details first, then cost, then the weights last — and the weights are
+optional: save the batch on the day it's made, then **Record the weight** once it's on
+the scale.
 
-Until the yield is in, the batch is listed with its code but counts as no stock, and it
-has no cost per jar — $48 over 19 jars is $2.53 each, and that figure simply doesn't
-exist before the 19 is known. The Batches page names any batch still waiting on its
-yield, so a cook can't quietly go uncounted.
+Until the weight is in, the batch is listed with its code but counts as no stock, and
+it has no cost per pound — $40 over 22.5 lb is $1.78 a pound, and that figure simply
+doesn't exist before the 22.5 is known. The Batches page names any batch still waiting
+on its weight, so a cook can't quietly go uncounted.
 
 Nothing is locked in. Details, costs and jar counts on an existing batch can be changed
 as often as you like, and the batch keeps its code so anything already traced to it
@@ -157,13 +168,12 @@ Editing a batch never changes its code, so anything already traced to it stays t
 A batch can also record what it cost to make — ingredients, jars, whatever you want
 to itemise. From that:
 
-- Within a batch, cost is split **evenly across the jars it produced**. A $50 cook
-  yielding 20 jars puts $2.50 behind each. That's arithmetic you can check in your
-  head, which matters more than false precision — record sizes as separate batches
-  when the difference between a 32 oz and a 16 oz jar is worth accounting for.
-- Across batches, a product's cost per jar is the **weighted average of every jar
-  ever made**, so a cheaper cook moves the average in proportion to its size, not
-  merely because it came later.
+- Cost is carried **per ounce**: a $40 cook that made 20 lb costs 12.5 cents an ounce,
+  so a 32 oz jar costs exactly twice what a 16 oz jar does. Splitting a batch evenly
+  across jars could never say that.
+- Across batches, a kimchi's cost per ounce is the **weighted average of every ounce
+  ever made**, so a cheaper cook moves the average in proportion to how much it
+  produced, not merely because it came later.
 - Reports then show **cost of jars sold**, **gross profit**, and **margin**, priced
   from every batch ever recorded — a jar sold today may well have been cooked last
   month.

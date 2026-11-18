@@ -5,6 +5,7 @@ import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import { isAllocationKind } from "@/lib/allocations";
 import { splitOldestFirst, totalRemaining } from "@/lib/allocate-fifo";
+import { jarsFrom } from "@/lib/weight";
 import type { ActionState } from "./customers";
 
 function revalidateAll(batchId: string) {
@@ -40,24 +41,37 @@ export async function allocateJars(_prev: ActionState, formData: FormData): Prom
 
   const batch = await db.batch.findUnique({
     where: { id: batchId },
-    include: { items: true },
+    include: { yields: true },
   });
   if (!batch) return { error: "That batch no longer exists." };
 
-  // Only what this batch actually made can be set aside from it.
-  const made = new Map(batch.items.map((i) => [i.productId, i]));
-  const valid = lines.filter((line) => made.has(line.productId));
-  if (valid.length === 0) return { error: "This batch did not make those jars." };
+  const products = await db.product.findMany({
+    where: { id: { in: lines.map((l) => l.productId) } },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+
+  // Only kimchi this batch actually made can be set aside from it.
+  const made = new Set(batch.yields.map((y) => y.varietyId));
+  const valid = lines.filter((line) => {
+    const product = byId.get(line.productId);
+    return product?.varietyId && made.has(product.varietyId);
+  });
+  if (valid.length === 0) return { error: "This batch did not make that kimchi." };
 
   await db.batchAllocation.createMany({
-    data: valid.map((line) => ({
-      batchId,
-      productId: line.productId,
-      name: made.get(line.productId)!.name,
-      quantity: line.quantity,
-      kind: kindRaw,
-      note: String(formData.get("note") ?? "").trim() || null,
-    })),
+    data: valid.map((line) => {
+      const product = byId.get(line.productId)!;
+      return {
+        batchId,
+        productId: product.id,
+        name: product.name,
+        quantity: line.quantity,
+        varietyId: product.varietyId,
+        jarWeightOz: product.jarWeightOz,
+        kind: kindRaw,
+        note: String(formData.get("note") ?? "").trim() || null,
+      };
+    }),
   });
 
   revalidateAll(batchId);
@@ -95,46 +109,58 @@ export async function setAsideFromStock(
   const wanted = Number(String(formData.get("quantity") ?? "0"));
   const note = String(formData.get("note") ?? "").trim() || null;
 
-  if (!productId) return { error: "Pick which kimchi." };
+  if (!productId) return { error: "Pick which jar." };
   if (!isAllocationKind(kindRaw)) return { error: "Pick where the jars went." };
   if (!Number.isInteger(wanted) || wanted <= 0) return { error: "Enter how many jars." };
 
+  const product = await db.product.findUnique({ where: { id: productId } });
+  if (!product?.varietyId) return { error: "That jar has no kimchi type set." };
+
+  const varietyId = product.varietyId;
   const batches = await db.batch.findMany({
-    where: { items: { some: { productId } } },
+    where: { yields: { some: { varietyId } } },
     include: {
-      items: { where: { productId } },
-      orderItems: { where: { productId } },
-      allocations: { where: { productId } },
+      yields: { where: { varietyId } },
+      orderItems: { where: { varietyId } },
+      allocations: { where: { varietyId } },
     },
   });
 
-  const stock = batches.map((batch) => ({
-    batchId: batch.id,
-    code: batch.code,
-    madeOn: batch.madeOn,
-    remaining: Math.max(
-      batch.items.reduce((sum, i) => sum + i.quantity, 0) -
-        batch.orderItems.reduce((sum, i) => sum + i.quantity, 0) -
-        batch.allocations.reduce((sum, a) => sum + a.quantity, 0),
+  // Batches hold weight, so what matters is how many whole jars of this size
+  // each one could still fill. A part jar's worth of kimchi is not a jar.
+  const stock = batches.map((batch) => {
+    const remainingOz = Math.max(
+      batch.yields.reduce((sum, y) => sum + y.weightOz, 0) -
+        batch.orderItems.reduce((sum, i) => sum + i.quantity * i.jarWeightOz, 0) -
+        batch.allocations.reduce((sum, a) => sum + a.quantity * a.jarWeightOz, 0),
       0,
-    ),
-  }));
+    );
+    return {
+      batchId: batch.id,
+      code: batch.code,
+      madeOn: batch.madeOn,
+      remaining: jarsFrom(remainingOz, product.jarWeightOz),
+    };
+  });
 
   const available = totalRemaining(stock);
-  if (available === 0) return { error: "There are none of those on the shelf." };
+  if (available === 0) return { error: "There is not enough of that kimchi left to fill a jar." };
   if (wanted > available) {
-    return { error: `Only ${available} ${available === 1 ? "jar is" : "jars are"} on the shelf.` };
+    return {
+      error: `Only ${available} ${available === 1 ? "jar" : "jars"} of that size can be filled from what is left.`,
+    };
   }
 
   const { splits } = splitOldestFirst(stock, wanted);
-  const name = batches.find((b) => b.items.length > 0)?.items[0]?.name ?? "Jar";
 
   await db.batchAllocation.createMany({
     data: splits.map((split) => ({
       batchId: split.batchId,
       productId,
-      name,
+      name: product.name,
       quantity: split.quantity,
+      varietyId,
+      jarWeightOz: product.jarWeightOz,
       kind: kindRaw,
       note,
     })),

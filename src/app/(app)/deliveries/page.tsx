@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { buildRun } from "@/lib/deliveries";
-import { stockByProduct } from "@/lib/stock";
+import { stockByVariety } from "@/lib/stock";
+import { formatWeight } from "@/lib/weight";
 import { formatDate, formatMoney } from "@/lib/money";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { setOrderStatus } from "@/actions/orders";
@@ -11,27 +12,39 @@ export const dynamic = "force-dynamic";
 
 export default async function DeliveriesPage() {
   const db = await getDb();
-  const [orders, batchItems, allocations] = await Promise.all([
+  const [orders, yields, allocations] = await Promise.all([
     getOrders(),
-    db.batchItem.findMany({ select: { productId: true, name: true, quantity: true } }),
-    db.batchAllocation.findMany({ select: { productId: true, name: true, quantity: true } }),
+    db.batchYield.findMany({ select: { varietyId: true, name: true, weightOz: true } }),
+    db.batchAllocation.findMany({
+      select: { varietyId: true, name: true, quantity: true, jarWeightOz: true },
+    }),
   ]);
 
-  const stock = stockByProduct(
-    batchItems,
+  const stock = stockByVariety(
+    yields,
     orders.flatMap((order) =>
-      order.items.map((i) => ({
-        productId: i.productId,
-        name: i.name,
-        quantity: i.quantity,
-        batchId: i.batchId,
-        status: order.status,
-      })),
+      order.items
+        .filter((i) => i.varietyId)
+        .map((i) => ({
+          varietyId: i.varietyId!,
+          name: i.name,
+          quantity: i.quantity,
+          jarWeightOz: i.jarWeightOz ?? 16,
+          batchId: i.batchId,
+          status: order.status,
+        })),
     ),
-    allocations,
+    allocations
+      .filter((a) => a.varietyId)
+      .map((a) => ({
+        varietyId: a.varietyId!,
+        name: a.name,
+        quantity: a.quantity,
+        jarWeightOz: a.jarWeightOz,
+      })),
   );
 
-  const spare = new Map(stock.map((row) => [row.productId, row.spare]));
+  const spare = new Map(stock.map((row) => [row.varietyId, row.spare]));
   const run = buildRun(orders, spare);
 
   return (
@@ -166,8 +179,8 @@ export default async function DeliveriesPage() {
         <SectionHeading
           title="Make next"
           subtitle={
-            run.toMakeJars > 0
-              ? `${run.toMakeJars} ${run.toMakeJars === 1 ? "jar" : "jars"} to cover open orders`
+            run.toMakeWeightOz > 0
+              ? `${formatWeight(run.toMakeWeightOz)} to cover open orders`
               : undefined
           }
         />
@@ -176,14 +189,18 @@ export default async function DeliveriesPage() {
         ) : (
           <div className="card divide-y divide-line">
             {run.toMake.map((row) => (
-              <div key={row.productId} className="flex items-center justify-between gap-3 p-4">
+              <div key={row.varietyId} className="flex items-center justify-between gap-3 p-4">
                 <p className="min-w-0 truncate font-semibold text-fg">{row.name}</p>
-                <p className="shrink-0 text-lg font-bold tabular-nums text-brand">{row.quantity}</p>
+                <p className="shrink-0 text-lg font-bold tabular-nums text-brand">
+                  {formatWeight(row.weightOz)}
+                </p>
               </div>
             ))}
             <div className="flex items-center justify-between gap-3 bg-surface-2/60 p-4">
-              <span className="text-sm font-semibold text-fg-muted">Total jars to make</span>
-              <span className="text-lg font-bold tabular-nums text-fg">{run.toMakeJars}</span>
+              <span className="text-sm font-semibold text-fg-muted">Total to make</span>
+              <span className="text-lg font-bold tabular-nums text-fg">
+                {formatWeight(run.toMakeWeightOz)}
+              </span>
             </div>
           </div>
         )}

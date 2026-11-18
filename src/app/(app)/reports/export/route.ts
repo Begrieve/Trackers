@@ -30,9 +30,9 @@ export async function GET(request: Request) {
     db.batch.findMany({
       select: {
         madeOn: true,
-        items: { select: { productId: true, quantity: true } },
+        yields: { select: { varietyId: true, weightOz: true } },
         costs: { select: { amount: true } },
-        allocations: { select: { productId: true, quantity: true } },
+        allocations: { select: { varietyId: true, quantity: true, jarWeightOz: true } },
       },
     }),
   ]);
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     ["Billed", money(report.billed)],
     ["Collected", money(report.collected)],
     ["Still owed", money(report.outstanding)],
-    ["Jars made", report.jarsMade],
+    ["Weight made (lb)", (report.weightMade / 16).toFixed(2)],
     ["Batches", report.batchCount],
     ["Batch spend", money(report.batchSpend)],
     ["Cost of jars sold", money(report.cogs)],

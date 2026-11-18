@@ -13,6 +13,7 @@ function order(overrides: {
   status?: "PENDING" | "DELIVERED" | "CANCELLED";
   items: [string, number, number][];
   productIds?: Record<string, string>;
+  jarWeightOz?: number;
   payments?: [number, string, Date][];
 }) {
   return {
@@ -24,6 +25,8 @@ function order(overrides: {
     items: overrides.items.map(([name, quantity, unitPrice]) => ({
       name,
       productId: overrides.productIds?.[name] ?? name,
+      varietyId: overrides.productIds?.[name] ?? name,
+      jarWeightOz: overrides.jarWeightOz ?? 16,
       quantity,
       unitPrice,
     })),
@@ -148,12 +151,12 @@ test("product rows aggregate quantity and revenue across orders", () => {
 
 test("batches are counted only when made inside the range", () => {
   const batches = [
-    { madeOn: new Date(2026, 6, 4), items: [{ productId: "p1", quantity: 12 }], costs: [] },
-    { madeOn: new Date(2026, 3, 4), items: [{ productId: "p1", quantity: 99 }], costs: [] },
+    { madeOn: new Date(2026, 6, 4), yields: [{ varietyId: "p1", weightOz: 192 }], costs: [] },
+    { madeOn: new Date(2026, 3, 4), yields: [{ varietyId: "p1", weightOz: 1584 }], costs: [] },
   ];
   const report = buildReport([], batches, rangeForPreset("this-month", NOW));
   assert.equal(report.batchCount, 1);
-  assert.equal(report.jarsMade, 12);
+  assert.equal(report.weightMade, 12 * 16);
 });
 
 test("profit subtracts the cost of the jars sold from what was billed", () => {
@@ -168,7 +171,7 @@ test("profit subtracts the cost of the jars sold from what was billed", () => {
   ];
   // 20 jars cooked for $40 => $2.00 a jar, so 4 jars cost $8.
   const batches = [
-    { madeOn: new Date(2026, 5, 1), items: [{ productId: "Napa", quantity: 20 }], costs: [{ amount: 4000 }] },
+    { madeOn: new Date(2026, 5, 1), yields: [{ varietyId: "Napa", weightOz: 320 }], costs: [{ amount: 4000 }] },
   ];
 
   const report = buildReport(orders, batches, rangeForPreset("this-month", NOW));
@@ -193,7 +196,7 @@ test("costs from an earlier period still price jars sold now", () => {
   ];
   const batches = [
     // Cooked back in April, sold in July.
-    { madeOn: new Date(2026, 3, 1), items: [{ productId: "Napa", quantity: 10 }], costs: [{ amount: 5000 }] },
+    { madeOn: new Date(2026, 3, 1), yields: [{ varietyId: "Napa", weightOz: 160 }], costs: [{ amount: 5000 }] },
   ];
 
   const report = buildReport(orders, batches, rangeForPreset("this-month", NOW));
@@ -223,7 +226,7 @@ test("batch spend counts every cost line of batches made in the period", () => {
   const batches = [
     {
       madeOn: new Date(2026, 6, 4),
-      items: [{ productId: "Napa", quantity: 10 }],
+      yields: [{ varietyId: "Napa", weightOz: 160 }],
       costs: [{ amount: 3000 }, { amount: 1500 }],
     },
   ];
@@ -245,9 +248,9 @@ test("jars set aside are reported with their cost, not folded into margin", () =
   const batches = [
     {
       madeOn: new Date(2026, 6, 1),
-      items: [{ productId: "Napa", quantity: 20 }],
+      yields: [{ varietyId: "Napa", weightOz: 320 }],
       costs: [{ amount: 4000 }],
-      allocations: [{ productId: "Napa", quantity: 3 }],
+      allocations: [{ varietyId: "Napa", quantity: 3, jarWeightOz: 16 }],
     },
   ];
 
@@ -261,7 +264,7 @@ test("jars set aside are reported with their cost, not folded into margin", () =
 test("a batch with nothing set aside reports zero rather than nothing", () => {
   const report = buildReport(
     [],
-    [{ madeOn: new Date(2026, 6, 4), items: [{ productId: "p1", quantity: 10 }], costs: [] }],
+    [{ madeOn: new Date(2026, 6, 4), yields: [{ varietyId: "p1", weightOz: 160 }], costs: [] }],
     rangeForPreset("this-month", NOW),
   );
   assert.equal(report.setAsideJars, 0);
@@ -274,9 +277,9 @@ test("jars set aside from an out-of-range batch are not counted this period", ()
     [
       {
         madeOn: new Date(2026, 3, 4),
-        items: [{ productId: "p1", quantity: 10 }],
+        yields: [{ varietyId: "p1", weightOz: 160 }],
         costs: [{ amount: 2000 }],
-        allocations: [{ productId: "p1", quantity: 5 }],
+        allocations: [{ varietyId: "p1", quantity: 5, jarWeightOz: 16 }],
       },
     ],
     rangeForPreset("this-month", NOW),
