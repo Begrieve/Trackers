@@ -133,12 +133,15 @@ export function AddProduct({ varieties }: { varieties: Variety[] }) {
   const [state, formAction] = useActionState<ActionState, FormData>(createProduct, {});
   const ref = useRef<HTMLFormElement>(null);
 
+  // Keyed on the whole state object rather than state.ok: every save returns a
+  // fresh object, whereas ok stays true from one save to the next and so would
+  // never re-fire — leaving the form open with the last values in it.
   useEffect(() => {
     if (state.ok) {
       ref.current?.reset();
       setOpen(false);
     }
-  }, [state.ok]);
+  }, [state]);
 
   if (!open) {
     return (
@@ -192,9 +195,11 @@ export function EditProduct({ product, varieties }: { product: Product; varietie
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(updateProduct, {});
 
+  // See the note in AddProduct: keyed on the object so a second save closes
+  // the row too, rather than leaving it open as though nothing happened.
   useEffect(() => {
     if (state.ok) setOpen(false);
-  }, [state.ok]);
+  }, [state]);
 
   if (!open) {
     return (

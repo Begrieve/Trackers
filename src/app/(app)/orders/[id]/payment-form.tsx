@@ -20,9 +20,12 @@ export function PaymentForm({ orderId, suggested }: { orderId: string; suggested
   const [state, formAction] = useActionState<ActionState, FormData>(addPayment, {});
   const ref = useRef<HTMLFormElement>(null);
 
+  // Keyed on the whole state object rather than state.ok: every payment returns
+  // a fresh object, whereas ok stays true from one to the next and so would
+  // never re-fire — leaving the last amount sitting in the box.
   useEffect(() => {
     if (state.ok) ref.current?.reset();
-  }, [state.ok]);
+  }, [state]);
 
   return (
     <form ref={ref} action={formAction} className="space-y-3">
