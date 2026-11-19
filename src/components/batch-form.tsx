@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import type { ActionState } from "@/actions/customers";
 import { formatMoney, toDateInputValue } from "@/lib/money";
-import { formatWeight, OZ_PER_LB } from "@/lib/weight";
+import { formatWeight, OZ_PER_LB, parseWeight } from "@/lib/weight";
 
 type Variety = { id: string; name: string };
 
@@ -28,10 +28,44 @@ function toCents(value: string) {
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
-/** Reads the pounds box for the running total. The server parses it properly. */
+/**
+ * Puts a saved weight back in its box so it reads the way it was meant.
+ * Whole pounds show as a bare number, since that is what the box expects;
+ * anything else keeps its units ("11 oz", "2 lb 4 oz") rather than becoming
+ * a fraction like 0.6875, and parses back to the very same ounces.
+ */
+function weightBoxValue(oz: number) {
+  return oz % OZ_PER_LB === 0 ? String(oz / OZ_PER_LB) : formatWeight(oz);
+}
+
+/** Reads a weight box the same way the server will, so the running total
+ *  below always agrees with what gets saved. */
 function toOunces(value: string) {
-  const n = Number(value.trim());
-  return Number.isFinite(n) && n > 0 ? Math.round(n * OZ_PER_LB) : 0;
+  if (!value.trim()) return 0;
+  try {
+    return parseWeight(value);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * What sits beside a weight box: "lb", because a bare number is pounds — or,
+ * once a unit is typed, the weight as it will be recorded. A small sample
+ * cook is easier to enter as "11 oz" than as a fraction of a pound.
+ */
+function WeightUnit({ value }: { value: string }) {
+  const text = value.trim();
+  const plain = text === "" || /^\d+(?:\.\d+)?$/.test(text);
+  const oz = plain ? 0 : toOunces(text);
+
+  if (plain) return <span className="w-24 text-sm text-fg-muted">lb</span>;
+  if (oz > 0) return <span className="w-24 text-sm font-medium text-fg-muted">{formatWeight(oz)}</span>;
+  return (
+    <span className="w-24 text-sm font-semibold text-danger" role="status">
+      can&apos;t read
+    </span>
+  );
 }
 
 function Submit({ label }: { label: string }) {
@@ -63,9 +97,7 @@ export function BatchForm({
   const [state, formAction] = useActionState<ActionState, FormData>(action, {});
 
   const [weights, setWeights] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      (initial?.yields ?? []).map((y) => [y.varietyId, String(y.weightOz / OZ_PER_LB)]),
-    ),
+    Object.fromEntries((initial?.yields ?? []).map((y) => [y.varietyId, weightBoxValue(y.weightOz)])),
   );
 
   const initialCostRows = initial
@@ -192,8 +224,11 @@ export function BatchForm({
       <section className="card p-4">
         <h2 className="mb-1 font-bold text-fg">How much did it make?</h2>
         <p className="mb-3 text-sm text-fg-muted">
-          Weigh each kimchi in pounds. Leave them blank if it isn&apos;t weighed yet — the batch
-          saves either way. Jars are filled from this weight when you assign orders.
+          Weigh each kimchi in pounds — or type the unit yourself for a small cook, like{" "}
+          <span className="font-semibold text-fg">11 oz</span> or{" "}
+          <span className="font-semibold text-fg">2 lb 4 oz</span>. Leave them blank if it
+          isn&apos;t weighed yet — the batch saves either way. Jars are filled from this weight
+          when you assign orders.
         </p>
 
         {varieties.length === 0 ? (
@@ -221,14 +256,14 @@ export function BatchForm({
                     name="weight"
                     inputMode="decimal"
                     placeholder="0"
-                    aria-label={`Pounds of ${variety.name}`}
+                    aria-label={`Weight of ${variety.name}, in pounds unless you give a unit`}
                     value={weights[variety.id] ?? ""}
                     onChange={(e) =>
                       setWeights((prev) => ({ ...prev, [variety.id]: e.target.value }))
                     }
-                    className="h-10 w-20 rounded-lg border border-line-strong bg-surface text-center text-sm tabular-nums text-fg"
+                    className="h-10 w-24 rounded-lg border border-line-strong bg-surface text-center text-sm tabular-nums text-fg"
                   />
-                  <span className="text-sm text-fg-muted">lb</span>
+                  <WeightUnit value={weights[variety.id] ?? ""} />
                 </div>
               </li>
             ))}

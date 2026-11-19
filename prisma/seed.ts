@@ -69,6 +69,7 @@ async function main() {
     const starters = [
       { variety: "Napa cabbage kimchi", jarWeightOz: 32, unitPrice: 2500 },
       { variety: "Napa cabbage kimchi", jarWeightOz: 16, unitPrice: 1500 },
+      { variety: "Napa cabbage kimchi", jarWeightOz: 11, unitPrice: 0 },
       { variety: "Cucumber kimchi (oi sobagi)", jarWeightOz: 16, unitPrice: 1600 },
       { variety: "Radish kimchi (kkakdugi)", jarWeightOz: 16, unitPrice: 1600 },
     ];
@@ -81,7 +82,10 @@ async function main() {
       });
       await prisma.product.create({
         data: {
-          name: `${starter.variety} — ${starter.jarWeightOz} oz`,
+          name:
+            starter.jarWeightOz === 11
+              ? `${starter.variety} — 300 mL sample (11 oz)`
+              : `${starter.variety} — ${starter.jarWeightOz} oz`,
           varietyId: variety.id,
           jarWeightOz: starter.jarWeightOz,
           unitLabel: "jar",

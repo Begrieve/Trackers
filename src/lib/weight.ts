@@ -67,3 +67,35 @@ export function jarsFrom(weightOz: number, jarWeightOz: number): number {
 export function weightOfJars(jars: number, jarWeightOz: number): number {
   return Math.max(jars, 0) * Math.max(jarWeightOz, 0);
 }
+
+/**
+ * Reads the jar-size box, which is labelled in ounces.
+ *
+ * A bare number here means ounces — the opposite of a batch weight box, where
+ * a bare number means pounds. The two read differently because a jar is
+ * described in ounces ("a 16 oz jar") and a cook is weighed in pounds. Spell
+ * out a unit and it is honoured either way, so "1 lb" and "16 oz" both work.
+ */
+export function parseJarWeight(input: string): number {
+  const text = input.trim();
+  if (!text) throw new Error("empty");
+  if (/^\d+(?:\.\d+)?$/.test(text)) {
+    const oz = Math.round(Number(text));
+    if (oz <= 0) throw new Error("not a size");
+    return oz;
+  }
+  const oz = parseWeight(text);
+  if (oz <= 0) throw new Error("not a size");
+  return oz;
+}
+
+/**
+ * A jar size, always in ounces: "11 oz", "32 oz".
+ *
+ * A jar is named by its ounces even when it holds more than a pound — nobody
+ * asks for a 2 lb jar — so sizes are not folded into pounds the way a cook's
+ * weight is.
+ */
+export function formatJarSize(oz: number): string {
+  return `${Math.round(oz)} oz`;
+}

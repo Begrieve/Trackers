@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import { parseMoney } from "@/lib/money";
+import { parseJarWeight } from "@/lib/weight";
 import type { ActionState } from "./customers";
 
 const productSchema = z.object({
@@ -30,8 +31,11 @@ async function varietyByName(db: Db, name: string) {
 }
 
 function readJarWeight(raw: string): number | null {
-  const oz = Math.round(Number(raw));
-  return Number.isFinite(oz) && oz > 0 ? oz : null;
+  try {
+    return parseJarWeight(raw);
+  } catch {
+    return null;
+  }
 }
 
 export async function createProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -55,7 +59,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
   if (unitPrice < 0) return { error: "Price can't be negative" };
 
   const jarWeightOz = readJarWeight(parsed.data.jarWeightOz);
-  if (jarWeightOz === null) return { error: "Enter how many ounces the jar holds, like 16." };
+  if (jarWeightOz === null) return { error: "Enter how many ounces the jar holds, like 16 or 11." };
 
   const variety = await varietyByName(db, parsed.data.variety);
 
@@ -97,7 +101,7 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
   }
 
   const jarWeightOz = readJarWeight(parsed.data.jarWeightOz);
-  if (jarWeightOz === null) return { error: "Enter how many ounces the jar holds, like 16." };
+  if (jarWeightOz === null) return { error: "Enter how many ounces the jar holds, like 16 or 11." };
 
   const variety = await varietyByName(db, parsed.data.variety);
 
