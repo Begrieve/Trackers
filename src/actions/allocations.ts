@@ -6,9 +6,11 @@ import { requireUser } from "@/auth";
 import { isAllocationKind } from "@/lib/allocations";
 import { splitOldestFirst, totalRemaining } from "@/lib/allocate-fifo";
 import { jarsFrom } from "@/lib/weight";
+import { fromDateInputValue } from "@/lib/money";
 import type { ActionState } from "./customers";
 
 function revalidateAll(batchId: string) {
+  revalidatePath("/set-aside");
   revalidatePath("/");
   revalidatePath("/batches");
   revalidatePath(`/batches/${batchId}`);
@@ -69,12 +71,93 @@ export async function allocateJars(_prev: ActionState, formData: FormData): Prom
         varietyId: product.varietyId,
         jarWeightOz: product.jarWeightOz,
         kind: kindRaw,
+        customerId: String(formData.get("customerId") ?? "").trim() || null,
         note: String(formData.get("note") ?? "").trim() || null,
       };
     }),
   });
 
   revalidateAll(batchId);
+  return { ok: true };
+}
+
+/**
+ * Correct an entry after the fact.
+ *
+ * These get typed in quickly — a jar handed over at the door, a sample at a
+ * fair — so the details catch up later: who it actually went to, which day,
+ * what it was for. Everything about the entry can be changed except which
+ * batch it came from, since that is what ties it to a cook.
+ */
+export async function updateAllocation(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireUser();
+  const db = await getDb();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Missing entry" };
+
+  const existing = await db.batchAllocation.findUnique({ where: { id } });
+  if (!existing) return { error: "That entry no longer exists." };
+
+  const kindRaw = String(formData.get("kind") ?? "");
+  if (!isAllocationKind(kindRaw)) return { error: "Pick where the jars went." };
+
+  const quantity = Number(String(formData.get("quantity") ?? "0"));
+  if (!Number.isInteger(quantity) || quantity <= 0) return { error: "Enter how many jars." };
+
+  const dayRaw = String(formData.get("wentOutOn") ?? "").trim();
+  const wentOutOn = dayRaw ? fromDateInputValue(dayRaw) : existing.wentOutOn;
+  if (!wentOutOn) return { error: "Enter the day like 2026-11-19." };
+
+  // Raising the count has to fit what the batch still holds. Its own jars are
+  // added back first, or editing an entry without touching the count would
+  // measure it against itself.
+  if (quantity > existing.quantity && existing.varietyId) {
+    const batch = await db.batch.findUnique({
+      where: { id: existing.batchId },
+      include: {
+        yields: { where: { varietyId: existing.varietyId } },
+        orderItems: { where: { varietyId: existing.varietyId } },
+        allocations: { where: { varietyId: existing.varietyId } },
+      },
+    });
+    if (batch) {
+      const freeOz = Math.max(
+        batch.yields.reduce((sum, y) => sum + y.weightOz, 0) -
+          batch.orderItems.reduce((sum, i) => sum + i.quantity * i.jarWeightOz, 0) -
+          batch.allocations.reduce((sum, a) => sum + a.quantity * a.jarWeightOz, 0) +
+          existing.quantity * existing.jarWeightOz,
+        0,
+      );
+      const room = jarsFrom(freeOz, existing.jarWeightOz);
+      if (quantity > room) {
+        return {
+          error: `${batch.code} only has enough left for ${room} ${room === 1 ? "jar" : "jars"} that size.`,
+        };
+      }
+    }
+  }
+
+  const customerId = String(formData.get("customerId") ?? "").trim() || null;
+
+  await db.batchAllocation.update({
+    where: { id },
+    data: {
+      kind: kindRaw,
+      quantity,
+      wentOutOn,
+      customerId,
+      note: String(formData.get("note") ?? "").trim() || null,
+    },
+  });
+
+  revalidateAll(existing.batchId);
+  revalidatePath("/set-aside");
+  if (customerId) revalidatePath(`/customers/${customerId}`);
+  if (existing.customerId) revalidatePath(`/customers/${existing.customerId}`);
   return { ok: true };
 }
 
@@ -108,6 +191,7 @@ export async function setAsideFromStock(
   const kindRaw = String(formData.get("kind") ?? "");
   const wanted = Number(String(formData.get("quantity") ?? "0"));
   const note = String(formData.get("note") ?? "").trim() || null;
+  const customerId = String(formData.get("customerId") ?? "").trim() || null;
 
   if (!productId) return { error: "Pick which jar." };
   if (!isAllocationKind(kindRaw)) return { error: "Pick where the jars went." };
@@ -162,11 +246,14 @@ export async function setAsideFromStock(
       varietyId,
       jarWeightOz: product.jarWeightOz,
       kind: kindRaw,
+      customerId,
       note,
     })),
   });
 
   for (const split of splits) revalidatePath(`/batches/${split.batchId}`);
+  if (customerId) revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/set-aside");
   revalidatePath("/");
   revalidatePath("/batches");
   revalidatePath("/deliveries");

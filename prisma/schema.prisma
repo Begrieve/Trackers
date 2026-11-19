@@ -29,8 +29,9 @@ model Customer {
   notes     String?
   createdAt DateTime @default(now())
 
-  orders   Order[]
-  payments Payment[]
+  orders      Order[]
+  payments    Payment[]
+  allocations BatchAllocation[]
 
   @@index([name])
 }
@@ -183,12 +184,19 @@ model BatchAllocation {
   jarWeightOz Int          @default(16)
   kind      AllocationKind
   note      String?
+  // Who it went to, when there is someone to name. Optional, because a jar
+  // kept for the household or one that spoiled went to nobody.
+  customerId String?
+  // The day it actually left, which is not always the day it was recorded.
+  wentOutOn DateTime       @default(now())
   createdAt DateTime       @default(now())
 
-  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  batch    Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([batchId])
+  @@index([customerId])
 }
 
 /** What a batch made: weight of one kimchi type. Jars are filled from it later. */

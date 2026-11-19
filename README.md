@@ -114,14 +114,29 @@ Two consequences worth knowing:
 - **Jars set aside leave the shelf.** They stop counting as spare, and if that leaves
   an open order uncovered, it correctly turns into a shortfall — giving stock away is
   exactly the kind of thing that should tell you to cook again.
-The dashboard carries an **Out without money** panel totalling those jars by where
-they went — kept, given away, shipped, lost — so a habit of giving stock away is
-visible without opening a report.
 
 - **They cost what they cost.** Reports show the jars set aside and what they cost to
   make, separately from margin. Margin measures what was sold; a jar you gave to your
   mother was never going to be revenue, so folding it into the margin would just make
   the figure lie.
+
+### Coming back to an entry
+
+These get recorded in a hurry — a jar handed over at the door, a tray of samples at a
+fair — so none of it has to be right at the time. The dashboard's **Out without money**
+panel opens a page listing every entry, newest first, and each one opens for editing:
+**who got it**, which day it went, whether it was kept or given or shipped or lost,
+how many, and what it was for.
+
+Naming a person is optional, because a jar kept for the household went to nobody. When
+there is a name, it links to the ledger you already keep, so that person's page shows
+what they were given alongside what they bought — and deleting them clears the link
+rather than erasing the gift.
+
+The day matters for more than the record: a jar is counted in the period it **left**,
+not the period its batch was cooked, so a July giveaway from an April cook is July's.
+Raising a count is checked against what the batch can still fill, so an edit can't
+quietly take out more kimchi than there was.
 
 ### Recording the weight afterwards
 

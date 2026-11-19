@@ -9,8 +9,8 @@ import { EmptyState, SectionHeading } from "@/components/ui";
 import { deleteBatch } from "@/actions/batches";
 import { FillOrders, type FillableOrder } from "./fill-orders";
 import { AllocateJars, type Allocatable } from "./allocate";
-import { removeAllocation } from "@/actions/allocations";
-import { ALLOCATION_LABEL } from "@/lib/allocations";
+import { type AllocationKindValue } from "@/lib/allocations";
+import { AllocationEntryRow } from "@/components/allocation-entry";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,10 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
         include: { order: { include: { customer: true } } },
         orderBy: { name: "asc" },
       },
-      allocations: { orderBy: { createdAt: "desc" } },
+      allocations: {
+        orderBy: [{ wentOutOn: "desc" }, { createdAt: "desc" }],
+        include: { customer: { select: { id: true, name: true } } },
+      },
     },
   });
 
@@ -35,7 +38,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
 
   const madeVarietyIds = batch.yields.map((y) => y.varietyId);
 
-  const [candidates, products] = await Promise.all([
+  const [candidates, products, people] = await Promise.all([
     db.order.findMany({
       where: {
         status: { not: "CANCELLED" },
@@ -49,6 +52,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       where: { active: true, varietyId: { in: madeVarietyIds } },
       orderBy: { name: "asc" },
     }),
+    db.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   const fillable: FillableOrder[] = candidates.map((order) => {
@@ -223,30 +227,28 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       {batch.allocations.length > 0 ? (
         <section className="card p-4">
           <h2 className="mb-3 font-bold text-fg">Set aside</h2>
-          <ul className="divide-y divide-line">
+          <div className="divide-y divide-line">
             {batch.allocations.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-fg">
-                    <span className="font-semibold tabular-nums">{a.quantity} ×</span> {a.name}
-                  </p>
-                  <p className="text-xs text-fg-muted">
-                    {ALLOCATION_LABEL[a.kind]} · {formatWeight(a.quantity * a.jarWeightOz)}
-                    {a.note ? ` · ${a.note}` : ""}
-                  </p>
-                </div>
-                <form action={removeAllocation} className="shrink-0">
-                  <input type="hidden" name="id" value={a.id} />
-                  <button
-                    type="submit"
-                    className="rounded-lg px-2 py-1 text-xs font-semibold text-fg-subtle hover:bg-danger-soft hover:text-danger"
-                  >
-                    Undo
-                  </button>
-                </form>
-              </li>
+              <AllocationEntryRow
+                key={a.id}
+                showBatch={false}
+                people={people}
+                entry={{
+                  id: a.id,
+                  name: a.name,
+                  quantity: a.quantity,
+                  jarWeightOz: a.jarWeightOz,
+                  kind: a.kind as AllocationKindValue,
+                  note: a.note,
+                  wentOutOn: a.wentOutOn.toISOString(),
+                  customerId: a.customerId,
+                  customerName: a.customer?.name ?? null,
+                  batchId: batch.id,
+                  batchCode: batch.code,
+                }}
+              />
             ))}
-          </ul>
+          </div>
         </section>
       ) : null}
 

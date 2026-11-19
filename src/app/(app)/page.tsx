@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const db = await getDb();
-  const [orders, batches, allocations, products] = await Promise.all([
+  const [orders, batches, allocations, products, people] = await Promise.all([
     getOrders(),
     db.batch.findMany({
       include: {
@@ -31,6 +31,7 @@ export default async function DashboardPage() {
       select: { varietyId: true, name: true, quantity: true, jarWeightOz: true, kind: true },
     }),
     db.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    db.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   const totals = rollUp(orders);
@@ -209,6 +210,7 @@ export default async function DashboardPage() {
         ) : null}
 
         <SetAsideJars
+          people={people}
           rows={products
             .filter((p) => p.varietyId)
             .map((p) => ({
@@ -252,12 +254,12 @@ export default async function DashboardPage() {
             title="Out without money"
             subtitle={`${givenTotal} ${givenTotal === 1 ? "jar" : "jars"} that never became revenue`}
             action={
-              <Link href="/reports?preset=all" className="text-sm font-semibold text-brand hover:underline">
-                In reports →
+              <Link href="/set-aside" className="text-sm font-semibold text-brand hover:underline">
+                See and edit →
               </Link>
             }
           />
-          <div className="card divide-y divide-line">
+          <Link href="/set-aside" className="card block divide-y divide-line transition hover:bg-surface-2">
             {givenByKind.map((row) => (
               <div key={row.value} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
@@ -267,7 +269,7 @@ export default async function DashboardPage() {
                 <p className="shrink-0 text-lg font-bold tabular-nums text-fg">{row.jars}</p>
               </div>
             ))}
-          </div>
+          </Link>
         </section>
       ) : null}
 

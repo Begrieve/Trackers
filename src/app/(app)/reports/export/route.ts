@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         madeOn: true,
         yields: { select: { varietyId: true, weightOz: true } },
         costs: { select: { amount: true } },
-        allocations: { select: { varietyId: true, quantity: true, jarWeightOz: true } },
+        allocations: { select: { varietyId: true, quantity: true, jarWeightOz: true, wentOutOn: true } },
       },
     }),
   ]);

@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function BatchesPage() {
   const db = await getDb();
 
-  const [batches, orderItems, allocations, products] = await Promise.all([
+  const [batches, orderItems, allocations, products, people] = await Promise.all([
     db.batch.findMany({
       include: {
         yields: { orderBy: { name: "asc" } },
@@ -38,6 +38,7 @@ export default async function BatchesPage() {
       select: { varietyId: true, name: true, quantity: true, jarWeightOz: true },
     }),
     db.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    db.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   const stock = stockByVariety(
@@ -153,6 +154,7 @@ export default async function BatchesPage() {
       ) : null}
 
       <SetAsideJars
+          people={people}
         rows={products
           .filter((p) => p.varietyId)
           .map((p) => ({

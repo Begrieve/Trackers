@@ -120,7 +120,14 @@ export type Report = {
 
 type ReportBatch = CostedBatch & {
   madeOn: Date;
-  allocations?: { varietyId: string | null; quantity: number; jarWeightOz: number }[];
+  allocations?: {
+    varietyId: string | null;
+    quantity: number;
+    jarWeightOz: number;
+    /** When it actually left. Older entries predate this and fall back to the
+     *  cook's date, which was all they ever recorded. */
+    wentOutOn?: Date | null;
+  }[];
 };
 
 export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: Range): Report {
@@ -204,11 +211,12 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
   // Jars kept, given away or lost: they cost what they cost, and no sale will
   // ever cover them. Reported on their own rather than folded into margin,
   // which measures what was sold.
-  const setAside = scopedBatches
-    .flatMap((b) => b.allocations ?? [])
-    .filter((a): a is { varietyId: string; quantity: number; jarWeightOz: number } =>
-      Boolean(a.varietyId),
-    );
+  // Counted by the day the jar left, not the day its batch was cooked: a jar
+  // given away in November is November's, even if it came from an October cook.
+  const setAside = batches
+    .flatMap((b) => (b.allocations ?? []).map((a) => ({ ...a, on: a.wentOutOn ?? b.madeOn })))
+    .filter((a) => inRange(a.on, range))
+    .filter((a): a is typeof a & { varietyId: string } => Boolean(a.varietyId));
   const setAsideResult = costOfGoodsSold(setAside, costs);
   const setAsideJars = setAside.reduce((sum, a) => sum + a.quantity, 0);
 

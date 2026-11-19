@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/lib/scope";
 import { getOrders } from "@/lib/queries";
 import { rollUp } from "@/lib/ledger";
-import { formatMoney } from "@/lib/money";
+import { formatDate, formatMoney } from "@/lib/money";
+import { formatWeight } from "@/lib/weight";
+import { ALLOCATION_LABEL, type AllocationKindValue } from "@/lib/allocations";
 import { OrderCard } from "@/components/order-card";
 import { EmptyState, StatCard } from "@/components/ui";
 import { deleteCustomer } from "@/actions/customers";
@@ -17,8 +19,16 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const customer = await db.customer.findUnique({ where: { id } });
   if (!customer) notFound();
 
-  const orders = await getOrders({ customerId: id });
+  const [orders, gifts] = await Promise.all([
+    getOrders({ customerId: id }),
+    db.batchAllocation.findMany({
+      where: { customerId: id },
+      orderBy: [{ wentOutOn: "desc" }, { createdAt: "desc" }],
+      include: { batch: { select: { id: true, code: true } } },
+    }),
+  ]);
   const totals = rollUp(orders);
+  const giftJars = gifts.reduce((sum, g) => sum + g.quantity, 0);
 
   return (
     <div className="space-y-6">
@@ -39,6 +49,46 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         <StatCard label="Paid to date" value={formatMoney(totals.collected)} tone="emerald" />
         <StatCard label="Ordered to date" value={formatMoney(totals.orderedValue)} />
       </div>
+
+      {gifts.length > 0 ? (
+        <section>
+          <h2 className="mb-1 text-lg font-bold text-fg">
+            <span aria-hidden="true">🎁</span> Given, not sold
+          </h2>
+          <p className="mb-3 text-sm text-fg-muted">
+            {giftJars} {giftJars === 1 ? "jar" : "jars"} that went to them with no money against
+            it. Edit these on{" "}
+            <Link href="/set-aside" className="font-semibold text-brand hover:underline">
+              Out without money
+            </Link>
+            .
+          </p>
+          <ul className="card divide-y divide-line">
+            {gifts.map((gift) => (
+              <li key={gift.id} className="flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-fg">
+                    <span className="font-semibold tabular-nums">{gift.quantity} ×</span>{" "}
+                    {gift.name}
+                  </p>
+                  <p className="truncate text-xs text-fg-muted">
+                    {ALLOCATION_LABEL[gift.kind as AllocationKindValue]} ·{" "}
+                    {formatWeight(gift.quantity * gift.jarWeightOz)} ·{" "}
+                    {formatDate(gift.wentOutOn)}
+                    {gift.note ? ` · ${gift.note}` : ""}
+                  </p>
+                </div>
+                <Link
+                  href={`/batches/${gift.batch.id}`}
+                  className="shrink-0 text-xs font-semibold text-fg-muted hover:text-fg"
+                >
+                  {gift.batch.code} →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-3 text-lg font-bold text-fg">Orders</h2>
