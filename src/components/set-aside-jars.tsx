@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { setAsideFromStock } from "@/actions/allocations";
@@ -22,7 +24,9 @@ export type ShelfRow = { productId: string; name: string; spare: number };
  * Only products with jars on the shelf are offered, so the form can't ask for
  * something that isn't there.
  */
-export function SetAsideJars({ rows }: { rows: ShelfRow[] }) {
+export type PersonOption = { id: string; name: string };
+
+export function SetAsideJars({ rows, people = [] }: { rows: ShelfRow[]; people?: PersonOption[] }) {
   const onShelf = rows.filter((r) => r.spare > 0);
 
   const [open, setOpen] = useState(false);
@@ -151,17 +155,42 @@ export function SetAsideJars({ rows }: { rows: ShelfRow[] }) {
         </button>
       </div>
 
-      <div>
-        <label className="label" htmlFor="setaside-note">
-          Note (optional)
-        </label>
-        <input
-          id="setaside-note"
-          name="note"
-          className="field"
-          placeholder="For us, sent to Mum, church fundraiser…"
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {people.length > 0 ? (
+          <div className="min-w-0">
+            <label className="label" htmlFor="setaside-person">
+              Who got it (optional)
+            </label>
+            <select id="setaside-person" name="customerId" className="field" defaultValue="">
+              <option value="">Nobody in particular</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        <div className="min-w-0">
+          <label className="label" htmlFor="setaside-note">
+            What it was for (optional)
+          </label>
+          <input
+            id="setaside-note"
+            name="note"
+            className="field"
+            placeholder="Church fundraiser, sent to Mum…"
+          />
+        </div>
       </div>
+
+      <p className="text-xs text-fg-subtle">
+        You can fill either of these in later —{" "}
+        <Link href="/set-aside" className="font-semibold text-brand underline">
+          Out without money
+        </Link>{" "}
+        lists every entry for editing.
+      </p>
 
       {state.error ? (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">

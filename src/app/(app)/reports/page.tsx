@@ -29,7 +29,7 @@ export default async function ReportsPage({
         madeOn: true,
         yields: { select: { varietyId: true, weightOz: true } },
         costs: { select: { amount: true } },
-        allocations: { select: { varietyId: true, quantity: true, jarWeightOz: true } },
+        allocations: { select: { varietyId: true, quantity: true, jarWeightOz: true, wentOutOn: true } },
       },
     }),
   ]);

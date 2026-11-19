@@ -286,3 +286,36 @@ test("jars set aside from an out-of-range batch are not counted this period", ()
   );
   assert.equal(report.setAsideJars, 0);
 });
+
+test("a jar is counted in the period it left, not the one its batch was cooked", () => {
+  const batches = [
+    {
+      madeOn: new Date(2026, 3, 4), // cooked in April
+      yields: [{ varietyId: "Napa", weightOz: 320 }],
+      costs: [{ amount: 4000 }],
+      allocations: [
+        { varietyId: "Napa", quantity: 2, jarWeightOz: 16, wentOutOn: new Date(2026, 6, 8) },
+        { varietyId: "Napa", quantity: 5, jarWeightOz: 16, wentOutOn: new Date(2026, 3, 9) },
+      ],
+    },
+  ];
+  const report = buildReport([], batches, rangeForPreset("this-month", NOW));
+  assert.equal(report.setAsideJars, 2, "only the two given away in July");
+  assert.equal(report.setAsideCost, 400, "2 jars at $2.00");
+});
+
+test("an entry with no day of its own falls back to the batch's", () => {
+  const inJuly = buildReport(
+    [],
+    [
+      {
+        madeOn: new Date(2026, 6, 4),
+        yields: [{ varietyId: "Napa", weightOz: 160 }],
+        costs: [{ amount: 2000 }],
+        allocations: [{ varietyId: "Napa", quantity: 3, jarWeightOz: 16 }],
+      },
+    ],
+    rangeForPreset("this-month", NOW),
+  );
+  assert.equal(inJuly.setAsideJars, 3);
+});

@@ -6,16 +6,11 @@ import { Prisma } from "@prisma/client";
 import { getDb } from "@/lib/scope";
 import { requireUser } from "@/auth";
 import type { ActionState } from "./customers";
-import { parseMoney } from "@/lib/money";
+import { fromDateInputValue, parseMoney } from "@/lib/money";
 import { parseWeight } from "@/lib/weight";
 import { batchCodePrefix, nextBatchCode } from "@/lib/batch-code";
 
-function parseDate(value: FormDataEntryValue | null): Date | null {
-  const raw = String(value ?? "").trim();
-  if (!raw) return null;
-  const date = new Date(`${raw}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
+const parseDate = (value: FormDataEntryValue | null) => fromDateInputValue(String(value ?? ""));
 
 /**
  * What the cook produced: a weight for each kimchi type. Blank boxes are
