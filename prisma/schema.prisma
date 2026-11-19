@@ -188,7 +188,9 @@ model BatchAllocation {
   // kept for the household or one that spoiled went to nobody.
   customerId String?
   // The day it actually left, which is not always the day it was recorded.
-  wentOutOn DateTime       @default(now())
+  // Null means it has not been handed over yet: the jars are spoken for and
+  // off the shelf, but they are still here, and the delivery run says so.
+  wentOutOn DateTime?
   createdAt DateTime       @default(now())
 
   batch    Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)

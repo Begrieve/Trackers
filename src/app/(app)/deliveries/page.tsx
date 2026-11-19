@@ -7,6 +7,8 @@ import { formatWeight } from "@/lib/weight";
 import { formatDate, formatMoney } from "@/lib/money";
 import { EmptyState, SectionHeading, StatCard } from "@/components/ui";
 import { setOrderStatus } from "@/actions/orders";
+import { markHandedOver } from "@/actions/allocations";
+import { ALLOCATION_LABEL, type AllocationKindValue } from "@/lib/allocations";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +18,28 @@ export default async function DeliveriesPage() {
     getOrders(),
     db.batchYield.findMany({ select: { varietyId: true, name: true, weightOz: true } }),
     db.batchAllocation.findMany({
-      select: { varietyId: true, name: true, quantity: true, jarWeightOz: true },
+      select: {
+        id: true,
+        varietyId: true,
+        name: true,
+        quantity: true,
+        jarWeightOz: true,
+        kind: true,
+        note: true,
+        wentOutOn: true,
+        createdAt: true,
+        customer: { select: { id: true, name: true, phone: true } },
+        batch: { select: { code: true } },
+      },
     }),
   ]);
+
+  // Samples and gifts that are spoken for but still here. They are off the
+  // shelf already, so the run only has to say they need carrying.
+  const toHandOver = allocations
+    .filter((a) => a.wentOutOn === null)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const handOverJars = toHandOver.reduce((sum, a) => sum + a.quantity, 0);
 
   const stock = stockByVariety(
     yields,
@@ -56,9 +77,19 @@ export default async function DeliveriesPage() {
         </p>
       </div>
 
-      <section className="grid grid-cols-3 gap-3">
-        <StatCard label="Stops" value={String(run.stops)} hint="Ready to hand over" />
-        <StatCard label="Jars" value={String(run.jars)} hint="On this run" />
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Stops" value={String(run.stops)} hint="Orders ready to hand over" />
+        <StatCard
+          label="Jars"
+          value={String(run.jars + handOverJars)}
+          hint={handOverJars > 0 ? `${handOverJars} of them given, not sold` : "On this run"}
+        />
+        <StatCard
+          label="To hand over"
+          value={String(handOverJars)}
+          hint="Samples and gifts"
+          tone={handOverJars > 0 ? "amber" : "neutral"}
+        />
         <StatCard
           label="To collect"
           value={formatMoney(run.collect)}
@@ -144,6 +175,76 @@ export default async function DeliveriesPage() {
           </ul>
         )}
       </section>
+
+      {toHandOver.length > 0 ? (
+        <section className="print-block">
+          <SectionHeading
+            title="Samples and gifts to hand over"
+            subtitle={`${handOverJars} ${handOverJars === 1 ? "jar" : "jars"} already set aside, no money to collect`}
+            action={
+              <Link href="/set-aside" className="no-print text-sm font-semibold text-brand hover:underline">
+                Edit →
+              </Link>
+            }
+          />
+          <ul className="space-y-3">
+            {toHandOver.map((a) => (
+              <li key={a.id} className="card p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-fg">
+                      {a.customer ? (
+                        <Link href={`/customers/${a.customer.id}`} className="hover:underline">
+                          {a.customer.name}
+                        </Link>
+                      ) : (
+                        <span className="text-fg-muted">No name on it yet</span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-sm text-fg-muted">
+                      {ALLOCATION_LABEL[a.kind as AllocationKindValue]}
+                      {a.note ? ` · ${a.note}` : ""}
+                      {a.customer?.phone ? (
+                        <>
+                          {" · "}
+                          <a
+                            href={`tel:${a.customer.phone}`}
+                            className="font-medium text-brand hover:underline"
+                          >
+                            {a.customer.phone}
+                          </a>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-bold text-success">Free</p>
+                    <p className="text-xs text-fg-muted">collect nothing</p>
+                  </div>
+                </div>
+
+                <ul className="mt-3 space-y-1">
+                  <li className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate text-fg">
+                      <span className="font-semibold tabular-nums">{a.quantity} ×</span> {a.name}
+                    </span>
+                    <span className="pill shrink-0 bg-surface-2 font-mono text-[11px] text-fg-muted ring-line">
+                      {a.batch.code}
+                    </span>
+                  </li>
+                </ul>
+
+                <form action={markHandedOver} className="no-print mt-3 border-t border-line pt-3">
+                  <input type="hidden" name="id" value={a.id} />
+                  <button type="submit" className="btn-secondary w-full sm:w-auto">
+                    Mark handed over
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="print-block">
         <SectionHeading

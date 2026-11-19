@@ -212,6 +212,38 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
       },
     });
 
+    // A promised sample that has not been handed over: it shows on the
+    // delivery run beside the orders, and counts in no report until it goes.
+    await db.batchAllocation.create({
+      data: {
+        batchId: november.id,
+        productId: cucumber.id,
+        name: cucumber.name,
+        quantity: 2,
+        varietyId: cucumberVariety.id,
+        jarWeightOz: 16,
+        kind: "DONATED",
+        customerId: mina.id,
+        note: "Samples to try",
+        wentOutOn: null,
+      },
+    });
+
+    // One already given away, so both states are on show.
+    await db.batchAllocation.create({
+      data: {
+        batchId: october.id,
+        productId: napa16.id,
+        name: napa16.name,
+        quantity: 1,
+        varietyId: napaVariety.id,
+        jarWeightOz: 16,
+        kind: "KEPT",
+        note: "Ours for the week",
+        wentOutOn: ago(9),
+      },
+    });
+
     return { products: products.length, people: people.length };
   } finally {
     await db.$disconnect();

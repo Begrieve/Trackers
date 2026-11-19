@@ -72,6 +72,7 @@ export async function allocateJars(_prev: ActionState, formData: FormData): Prom
         jarWeightOz: product.jarWeightOz,
         kind: kindRaw,
         customerId: String(formData.get("customerId") ?? "").trim() || null,
+        wentOutOn: formData.get("pending") === "on" ? null : new Date(),
         note: String(formData.get("note") ?? "").trim() || null,
       };
     }),
@@ -108,9 +109,15 @@ export async function updateAllocation(
   const quantity = Number(String(formData.get("quantity") ?? "0"));
   if (!Number.isInteger(quantity) || quantity <= 0) return { error: "Enter how many jars." };
 
+  // Ticking "still to hand over" clears the day, which is what puts the entry
+  // back on the delivery run. An emptied date box means the same thing.
+  const pending = formData.get("pending") === "on";
   const dayRaw = String(formData.get("wentOutOn") ?? "").trim();
-  const wentOutOn = dayRaw ? fromDateInputValue(dayRaw) : existing.wentOutOn;
-  if (!wentOutOn) return { error: "Enter the day like 2026-11-19." };
+  let wentOutOn: Date | null = null;
+  if (!pending) {
+    wentOutOn = dayRaw ? fromDateInputValue(dayRaw) : (existing.wentOutOn ?? new Date());
+    if (!wentOutOn) return { error: "Enter the day like 2026-11-19." };
+  }
 
   // Raising the count has to fit what the batch still holds. Its own jars are
   // added back first, or editing an entry without touching the count would
@@ -155,10 +162,31 @@ export async function updateAllocation(
   });
 
   revalidateAll(existing.batchId);
-  revalidatePath("/set-aside");
   if (customerId) revalidatePath(`/customers/${customerId}`);
   if (existing.customerId) revalidatePath(`/customers/${existing.customerId}`);
   return { ok: true };
+}
+
+/**
+ * Hand over what was promised: the jars leave today.
+ *
+ * Its own action because this is the one-tap move on the delivery run, where
+ * opening a form to set a date would be the wrong amount of ceremony.
+ */
+export async function markHandedOver(formData: FormData): Promise<void> {
+  await requireUser();
+  const db = await getDb();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const updated = await db.batchAllocation.update({
+    where: { id },
+    data: { wentOutOn: new Date() },
+  });
+
+  revalidateAll(updated.batchId);
+  if (updated.customerId) revalidatePath(`/customers/${updated.customerId}`);
 }
 
 export async function removeAllocation(formData: FormData): Promise<void> {
@@ -192,6 +220,8 @@ export async function setAsideFromStock(
   const wanted = Number(String(formData.get("quantity") ?? "0"));
   const note = String(formData.get("note") ?? "").trim() || null;
   const customerId = String(formData.get("customerId") ?? "").trim() || null;
+  // Unticked means it is already out of your hands, which is the common case.
+  const wentOutOn = formData.get("pending") === "on" ? null : new Date();
 
   if (!productId) return { error: "Pick which jar." };
   if (!isAllocationKind(kindRaw)) return { error: "Pick where the jars went." };
@@ -247,6 +277,7 @@ export async function setAsideFromStock(
       jarWeightOz: product.jarWeightOz,
       kind: kindRaw,
       customerId,
+      wentOutOn,
       note,
     })),
   });

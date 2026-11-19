@@ -124,9 +124,13 @@ type ReportBatch = CostedBatch & {
     varietyId: string | null;
     quantity: number;
     jarWeightOz: number;
-    /** When it actually left. Older entries predate this and fall back to the
-     *  cook's date, which was all they ever recorded. */
-    wentOutOn?: Date | null;
+    /**
+     * When it actually left, or null while it is still to be handed over,
+     * which belongs to no period yet. Required rather than optional so a
+     * caller that forgets to select it fails to compile, instead of quietly
+     * reporting every jar as still on the shelf.
+     */
+    wentOutOn: Date | null;
   }[];
 };
 
@@ -213,9 +217,10 @@ export function buildReport(orders: FullOrder[], batches: ReportBatch[], range: 
   // which measures what was sold.
   // Counted by the day the jar left, not the day its batch was cooked: a jar
   // given away in November is November's, even if it came from an October cook.
+  // One still waiting to be handed over has not left at all, so it waits too.
   const setAside = batches
-    .flatMap((b) => (b.allocations ?? []).map((a) => ({ ...a, on: a.wentOutOn ?? b.madeOn })))
-    .filter((a) => inRange(a.on, range))
+    .flatMap((b) => b.allocations ?? [])
+    .filter((a) => a.wentOutOn !== null && inRange(a.wentOutOn, range))
     .filter((a): a is typeof a & { varietyId: string } => Boolean(a.varietyId));
   const setAsideResult = costOfGoodsSold(setAside, costs);
   const setAsideJars = setAside.reduce((sum, a) => sum + a.quantity, 0);

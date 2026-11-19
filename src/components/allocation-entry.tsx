@@ -21,7 +21,8 @@ export type AllocationEntry = {
   jarWeightOz: number;
   kind: AllocationKindValue;
   note: string | null;
-  wentOutOn: string;
+  /** Null until it is actually handed over. */
+  wentOutOn: string | null;
   customerId: string | null;
   customerName: string | null;
   batchId: string;

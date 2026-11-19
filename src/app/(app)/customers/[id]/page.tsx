@@ -23,12 +23,13 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
     getOrders({ customerId: id }),
     db.batchAllocation.findMany({
       where: { customerId: id },
-      orderBy: [{ wentOutOn: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ wentOutOn: { sort: "desc", nulls: "first" } }, { createdAt: "desc" }],
       include: { batch: { select: { id: true, code: true } } },
     }),
   ]);
   const totals = rollUp(orders);
   const giftJars = gifts.reduce((sum, g) => sum + g.quantity, 0);
+  const giftsOwed = gifts.filter((g) => !g.wentOutOn).reduce((sum, g) => sum + g.quantity, 0);
 
   return (
     <div className="space-y-6">
@@ -56,8 +57,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             <span aria-hidden="true">🎁</span> Given, not sold
           </h2>
           <p className="mb-3 text-sm text-fg-muted">
-            {giftJars} {giftJars === 1 ? "jar" : "jars"} that went to them with no money against
-            it. Edit these on{" "}
+            {giftJars} {giftJars === 1 ? "jar" : "jars"} with no money against it
+            {giftsOwed > 0 ? `, ${giftsOwed} still to hand over` : ""}. Edit these on{" "}
             <Link href="/set-aside" className="font-semibold text-brand hover:underline">
               Out without money
             </Link>
@@ -74,7 +75,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                   <p className="truncate text-xs text-fg-muted">
                     {ALLOCATION_LABEL[gift.kind as AllocationKindValue]} ·{" "}
                     {formatWeight(gift.quantity * gift.jarWeightOz)} ·{" "}
-                    {formatDate(gift.wentOutOn)}
+                    {gift.wentOutOn ? (
+                      formatDate(gift.wentOutOn)
+                    ) : (
+                      <span className="font-semibold text-warn-fg">still to hand over</span>
+                    )}
                     {gift.note ? ` · ${gift.note}` : ""}
                   </p>
                 </div>
