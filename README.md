@@ -120,6 +120,19 @@ Two consequences worth knowing:
   mother was never going to be revenue, so folding it into the margin would just make
   the figure lie.
 
+### Promised, but not handed over yet
+
+A sample or a gift is often spoken for before it changes hands. Tick **I still have to
+hand these over** when recording it, and the jars come off the shelf straight away —
+nothing else can be promised the same kimchi — while the entry waits on the **delivery
+run**, beside the orders, with the person, the batch code and a **Mark handed over**
+button. It prints on the sheet with them.
+
+Until it goes, it has left in no period at all: reports don't count it, and the
+dashboard shows it apart from what has actually gone. Marking it handed over dates it
+today, at which point it counts like any other. Untick the box on an entry and it goes
+back on the run.
+
 ### Coming back to an entry
 
 These get recorded in a hurry — a jar handed over at the door, a tray of samples at a
@@ -134,7 +147,8 @@ what they were given alongside what they bought — and deleting them clears the
 rather than erasing the gift.
 
 The day matters for more than the record: a jar is counted in the period it **left**,
-not the period its batch was cooked, so a July giveaway from an April cook is July's.
+not the period its batch was cooked, so a July giveaway from an April cook is July's,
+and one not yet handed over is nobody's.
 Raising a count is checked against what the batch can still fill, so an edit can't
 quietly take out more kimchi than there was.
 

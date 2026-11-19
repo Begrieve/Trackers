@@ -250,7 +250,9 @@ test("jars set aside are reported with their cost, not folded into margin", () =
       madeOn: new Date(2026, 6, 1),
       yields: [{ varietyId: "Napa", weightOz: 320 }],
       costs: [{ amount: 4000 }],
-      allocations: [{ varietyId: "Napa", quantity: 3, jarWeightOz: 16 }],
+      allocations: [
+        { varietyId: "Napa", quantity: 3, jarWeightOz: 16, wentOutOn: new Date(2026, 6, 2) },
+      ],
     },
   ];
 
@@ -279,7 +281,9 @@ test("jars set aside from an out-of-range batch are not counted this period", ()
         madeOn: new Date(2026, 3, 4),
         yields: [{ varietyId: "p1", weightOz: 160 }],
         costs: [{ amount: 2000 }],
-        allocations: [{ varietyId: "p1", quantity: 5, jarWeightOz: 16 }],
+        allocations: [
+          { varietyId: "p1", quantity: 5, jarWeightOz: 16, wentOutOn: new Date(2026, 3, 5) },
+        ],
       },
     ],
     rangeForPreset("this-month", NOW),
@@ -304,18 +308,17 @@ test("a jar is counted in the period it left, not the one its batch was cooked",
   assert.equal(report.setAsideCost, 400, "2 jars at $2.00");
 });
 
-test("an entry with no day of its own falls back to the batch's", () => {
-  const inJuly = buildReport(
-    [],
-    [
-      {
-        madeOn: new Date(2026, 6, 4),
-        yields: [{ varietyId: "Napa", weightOz: 160 }],
-        costs: [{ amount: 2000 }],
-        allocations: [{ varietyId: "Napa", quantity: 3, jarWeightOz: 16 }],
-      },
-    ],
-    rangeForPreset("this-month", NOW),
-  );
-  assert.equal(inJuly.setAsideJars, 3);
+test("a jar still to be handed over has left in no period at all", () => {
+  const batch = {
+    madeOn: new Date(2026, 6, 4),
+    yields: [{ varietyId: "Napa", weightOz: 160 }],
+    costs: [{ amount: 2000 }],
+    allocations: [{ varietyId: "Napa", quantity: 3, jarWeightOz: 16, wentOutOn: null }],
+  };
+
+  // Not this month, even though its batch was cooked this month...
+  assert.equal(buildReport([], [batch], rangeForPreset("this-month", NOW)).setAsideJars, 0);
+  // ...and not in all of time either. It has not gone anywhere yet.
+  assert.equal(buildReport([], [batch], rangeForPreset("all", NOW)).setAsideJars, 0);
+  assert.equal(buildReport([], [batch], rangeForPreset("all", NOW)).setAsideCost, 0);
 });

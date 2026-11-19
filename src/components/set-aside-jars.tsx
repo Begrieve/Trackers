@@ -184,8 +184,13 @@ export function SetAsideJars({ rows, people = [] }: { rows: ShelfRow[]; people?:
         </div>
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-fg-muted">
+        <input type="checkbox" name="pending" className="h-4 w-4 accent-brand" />
+        I still have to hand these over — put them on the delivery run
+      </label>
+
       <p className="text-xs text-fg-subtle">
-        You can fill either of these in later —{" "}
+        You can fill any of these in later —{" "}
         <Link href="/set-aside" className="font-semibold text-brand underline">
           Out without money
         </Link>{" "}

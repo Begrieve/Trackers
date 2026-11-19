@@ -15,7 +15,8 @@ export default async function SetAsidePage() {
 
   const [rows, people, batches] = await Promise.all([
     db.batchAllocation.findMany({
-      orderBy: [{ wentOutOn: "desc" }, { createdAt: "desc" }],
+      // Nulls first: what you still owe someone is what you came here for.
+      orderBy: [{ wentOutOn: { sort: "desc", nulls: "first" } }, { createdAt: "desc" }],
       include: {
         batch: { select: { id: true, code: true } },
         customer: { select: { id: true, name: true } },
@@ -37,26 +38,29 @@ export default async function SetAsidePage() {
     jarWeightOz: row.jarWeightOz,
     kind: row.kind as AllocationKindValue,
     note: row.note,
-    wentOutOn: row.wentOutOn.toISOString(),
+    wentOutOn: row.wentOutOn ? row.wentOutOn.toISOString() : null,
     customerId: row.customerId,
     customerName: row.customer?.name ?? null,
     batchId: row.batch.id,
     batchCode: row.batch.code,
   }));
 
-  const jars = rows.reduce((sum, r) => sum + r.quantity, 0);
-  const weight = rows.reduce((sum, r) => sum + r.quantity * r.jarWeightOz, 0);
+  const gone = rows.filter((r) => r.wentOutOn);
+  const owing = rows.filter((r) => !r.wentOutOn);
+  const jars = gone.reduce((sum, r) => sum + r.quantity, 0);
+  const weight = gone.reduce((sum, r) => sum + r.quantity * r.jarWeightOz, 0);
+  const owingJars = owing.reduce((sum, r) => sum + r.quantity, 0);
 
   // What it cost to make, so a year of giving has a number against it.
   const costs = unitCosts(batches);
-  const spent = rows.reduce((sum, r) => {
+  const spent = gone.reduce((sum, r) => {
     const unit = r.varietyId ? costs.get(r.varietyId) : undefined;
     return sum + (unit ? costOfJar(unit, r.jarWeightOz) * r.quantity : 0);
   }, 0);
 
   const byKind = ALLOCATION_KINDS.map((kind) => ({
     ...kind,
-    jars: rows.filter((r) => r.kind === kind.value).reduce((sum, r) => sum + r.quantity, 0),
+    jars: gone.filter((r) => r.kind === kind.value).reduce((sum, r) => sum + r.quantity, 0),
   })).filter((k) => k.jars > 0);
 
   const named = rows.filter((r) => r.customerId).length;
@@ -87,7 +91,7 @@ export default async function SetAsidePage() {
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Jars" value={String(jars)} hint="Never became revenue" />
+            <StatCard label="Jars gone" value={String(jars)} hint="Never became revenue" />
             <StatCard label="Weight" value={formatWeight(weight)} />
             <StatCard
               label="Cost to make"
@@ -95,11 +99,20 @@ export default async function SetAsidePage() {
               hint="Spent, with no sale against it"
               tone="amber"
             />
-            <StatCard
-              label="Named to a person"
-              value={`${named} of ${rows.length}`}
-              hint={named === rows.length ? "All accounted for" : "Tap an entry to add a name"}
-            />
+            {owingJars > 0 ? (
+              <StatCard
+                label="Still to hand over"
+                value={String(owingJars)}
+                hint="On the delivery run"
+                tone="amber"
+              />
+            ) : (
+              <StatCard
+                label="Named to a person"
+                value={`${named} of ${rows.length}`}
+                hint={named === rows.length ? "All accounted for" : "Tap an entry to add a name"}
+              />
+            )}
           </section>
 
           {byKind.length > 0 ? (

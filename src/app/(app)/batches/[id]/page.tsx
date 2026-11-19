@@ -28,7 +28,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
         orderBy: { name: "asc" },
       },
       allocations: {
-        orderBy: [{ wentOutOn: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ wentOutOn: { sort: "desc", nulls: "first" } }, { createdAt: "desc" }],
         include: { customer: { select: { id: true, name: true } } },
       },
     },
@@ -240,7 +240,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
                   jarWeightOz: a.jarWeightOz,
                   kind: a.kind as AllocationKindValue,
                   note: a.note,
-                  wentOutOn: a.wentOutOn.toISOString(),
+                  wentOutOn: a.wentOutOn ? a.wentOutOn.toISOString() : null,
                   customerId: a.customerId,
                   customerName: a.customer?.name ?? null,
                   batchId: batch.id,

@@ -28,7 +28,14 @@ export default async function DashboardPage() {
       orderBy: [{ madeOn: "desc" }, { createdAt: "desc" }],
     }),
     db.batchAllocation.findMany({
-      select: { varietyId: true, name: true, quantity: true, jarWeightOz: true, kind: true },
+      select: {
+        varietyId: true,
+        name: true,
+        quantity: true,
+        jarWeightOz: true,
+        kind: true,
+        wentOutOn: true,
+      },
     }),
     db.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     db.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -76,15 +83,21 @@ export default async function DashboardPage() {
 
   const shelf = new Map(shelfByVariety(batches).map((row) => [row.varietyId, row]));
 
-  // Jars that left without money, grouped by where they went.
+  // Jars that left without money, grouped by where they went. Ones still
+  // waiting to be handed over are counted apart: they have not left yet, and
+  // the delivery run is where they belong.
+  const gone = allocations.filter((a) => a.wentOutOn !== null);
   const givenByKind = ALLOCATION_KINDS.map((kind) => ({
     ...kind,
-    jars: allocations
+    jars: gone
       .filter((a) => a.kind === (kind.value as AllocationKindValue))
       .reduce((sum, a) => sum + a.quantity, 0),
   })).filter((row) => row.jars > 0);
 
   const givenTotal = givenByKind.reduce((sum, r) => sum + r.jars, 0);
+  const toHandOver = allocations
+    .filter((a) => a.wentOutOn === null)
+    .reduce((sum, a) => sum + a.quantity, 0);
 
   const withMath = orders.map((order) => ({ order, math: orderMath(order) }));
   const owesMoney = withMath.filter(({ order, math }) => bucketOf(order, math) === "UNPAID_RECEIVABLE");
@@ -248,11 +261,15 @@ export default async function DashboardPage() {
         ) : null}
       </section>
 
-      {givenTotal > 0 ? (
+      {givenTotal > 0 || toHandOver > 0 ? (
         <section>
           <SectionHeading
             title="Out without money"
-            subtitle={`${givenTotal} ${givenTotal === 1 ? "jar" : "jars"} that never became revenue`}
+            subtitle={
+              toHandOver > 0
+                ? `${givenTotal} gone · ${toHandOver} still to hand over`
+                : `${givenTotal} ${givenTotal === 1 ? "jar" : "jars"} that never became revenue`
+            }
             action={
               <Link href="/set-aside" className="text-sm font-semibold text-brand hover:underline">
                 See and edit →
@@ -260,6 +277,15 @@ export default async function DashboardPage() {
             }
           />
           <Link href="/set-aside" className="card block divide-y divide-line transition hover:bg-surface-2">
+            {toHandOver > 0 ? (
+              <div className="flex items-center justify-between gap-3 bg-warn-soft/40 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-warn-fg">Still to hand over</p>
+                  <p className="truncate text-xs text-fg-muted">On the delivery run</p>
+                </div>
+                <p className="shrink-0 text-lg font-bold tabular-nums text-warn-fg">{toHandOver}</p>
+              </div>
+            ) : null}
             {givenByKind.map((row) => (
               <div key={row.value} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
