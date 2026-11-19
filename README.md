@@ -35,11 +35,22 @@ All money is stored in integer cents, so no rounding drift.
 **Batches** records what you actually made — the **weight** of each kimchi, the date,
 and notes. Jars are filled from that weight when you assign orders, which is the way
 round it actually happens: you cook a quantity of kimchi, then decide what goes into
-16 oz or 32 oz jars as orders come in.
+16 oz, 32 oz or sample jars as orders come in.
 
 A 16 oz jar holds about a pound, so a 38 lb cook is 38 small jars, or 19 large ones,
 or any mix. The app shows those equivalents rather than making you choose up front —
 and a jar size added later draws from cooks already recorded, with nothing to restate.
+
+**A kimchi can carry as many sizes as you want**, and they need not be round numbers:
+a 300 mL sample jar holds about 11 oz, and 19 lb spare is 19 × 16 oz, 9 × 32 oz, or
+27 × 11 oz. A size priced at **0** is a giveaway size — it shows on the shelf and in
+*Keep or give away*, and what leaves that way is reported as cost with no sale against
+it rather than quietly denting the margin.
+
+Weights are typed in pounds, since that is how a cook is weighed, but a unit spelled
+out is honoured: **11 oz** and **2 lb 4 oz** both work, which is easier than a fraction
+of a pound for a small sample cook. A jar's size is the other way round — the box is
+labelled in ounces, so a bare **11** there means 11 oz.
 
 Weight is stored as whole ounces, for the same reason money is stored as whole cents:
 a batch is added to, drawn down and divided repeatedly, and fractions of a pound would

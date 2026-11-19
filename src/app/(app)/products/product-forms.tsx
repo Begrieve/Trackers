@@ -3,6 +3,8 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProduct, updateProduct } from "@/actions/products";
+import { formatMoney } from "@/lib/money";
+import { formatJarSize } from "@/lib/weight";
 import type { ActionState } from "@/actions/customers";
 
 type Product = {
@@ -17,41 +19,96 @@ type Product = {
 
 export type Variety = { id: string; name: string };
 
+function Field({
+  label,
+  hint,
+  className = "",
+  children,
+}: {
+  label: string;
+  hint?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className={`block min-w-0 ${className}`}>
+      <span className="label">{label}</span>
+      {children}
+      {hint ? <span className="mt-1 block text-xs text-fg-subtle">{hint}</span> : null}
+    </label>
+  );
+}
+
 /** A jar is a size of some kimchi; batches are weighed against that kimchi. */
-function VarietyAndWeight({
+function VarietyField({
   varieties,
   varietyId,
-  jarWeightOz,
 }: {
   varieties: Variety[];
   varietyId?: string | null;
-  jarWeightOz?: number;
 }) {
   return (
-    <>
+    <Field label="Which kimchi">
       <input
         name="variety"
         required
         list="variety-options"
         className="field"
         defaultValue={varieties.find((v) => v.id === varietyId)?.name ?? ""}
-        placeholder="Kimchi type, e.g. Napa cabbage kimchi"
+        placeholder="Napa cabbage kimchi"
       />
       <datalist id="variety-options">
         {varieties.map((v) => (
           <option key={v.id} value={v.name} />
         ))}
       </datalist>
-      <input
-        name="jarWeightOz"
-        required
-        inputMode="numeric"
-        className="field"
-        defaultValue={jarWeightOz ?? 16}
-        placeholder="16"
-        aria-label="Ounces of kimchi this jar holds"
-      />
-    </>
+    </Field>
+  );
+}
+
+function JarSizeField({ jarWeightOz }: { jarWeightOz?: number }) {
+  return (
+    <Field label="Jar holds">
+      <div className="relative min-w-0">
+        <input
+          name="jarWeightOz"
+          required
+          inputMode="decimal"
+          className="field pr-9"
+          defaultValue={jarWeightOz ?? 16}
+          placeholder="16"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-fg-subtle"
+        >
+          oz
+        </span>
+      </div>
+    </Field>
+  );
+}
+
+function PriceField({ unitPrice }: { unitPrice?: number }) {
+  return (
+    <Field label="Price">
+      <div className="relative min-w-0">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-fg-subtle"
+        >
+          $
+        </span>
+        <input
+          name="price"
+          required
+          inputMode="decimal"
+          className="field pl-7"
+          defaultValue={unitPrice === undefined ? undefined : (unitPrice / 100).toFixed(2)}
+          placeholder="25.00"
+        />
+      </div>
+    </Field>
   );
 }
 
@@ -68,6 +125,9 @@ function Submit({ label, variant = "primary" }: { label: string; variant?: "prim
   );
 }
 
+const SIZE_HELP =
+  "How much kimchi the jar holds, in ounces — a 16 oz jar takes about a pound, a 300 mL sample jar about 11. Any size works, and one kimchi can have as many sizes as you like. Leave the price at 0 for a size you only ever give away.";
+
 export function AddProduct({ varieties }: { varieties: Variety[] }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(createProduct, {});
@@ -83,7 +143,7 @@ export function AddProduct({ varieties }: { varieties: Variety[] }) {
   if (!open) {
     return (
       <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
-        + Add product
+        + Add a jar size
       </button>
     );
   }
@@ -91,14 +151,20 @@ export function AddProduct({ varieties }: { varieties: Variety[] }) {
   return (
     <form ref={ref} action={formAction} className="card w-full space-y-3 p-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <input name="name" required className="field" placeholder="Napa kimchi — 32 oz" autoFocus />
-        <input name="price" required inputMode="decimal" className="field" placeholder="25.00" />
-        <VarietyAndWeight varieties={varieties} />
+        <Field label="What to call it" className="sm:col-span-2">
+          <input
+            name="name"
+            required
+            className="field"
+            placeholder="Napa cabbage kimchi — 300 mL sample"
+            autoFocus
+          />
+        </Field>
+        <VarietyField varieties={varieties} />
+        <JarSizeField />
+        <PriceField />
       </div>
-      <p className="text-xs text-fg-subtle">
-        The weight is how much kimchi the jar holds, in ounces — a 16 oz jar takes about a pound.
-        Batches are weighed, and jars are filled from that weight.
-      </p>
+      <p className="text-xs text-fg-subtle">{SIZE_HELP}</p>
 
       {state.error ? (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -107,7 +173,7 @@ export function AddProduct({ varieties }: { varieties: Variety[] }) {
       ) : null}
 
       <div className="flex gap-2">
-        <Submit label="Save product" />
+        <Submit label="Save jar size" />
         <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
           Cancel
         </button>
@@ -116,34 +182,77 @@ export function AddProduct({ varieties }: { varieties: Variety[] }) {
   );
 }
 
+/**
+ * A jar reads as one line until you open it.
+ *
+ * One kimchi can carry several sizes, so the list has to stay scannable on a
+ * phone — five edit boxes per jar would bury it.
+ */
 export function EditProduct({ product, varieties }: { product: Product; varieties: Variety[] }) {
+  const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(updateProduct, {});
 
+  useEffect(() => {
+    if (state.ok) setOpen(false);
+  }, [state.ok]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-semibold text-fg">{product.name}</span>
+          <span className="mt-0.5 block text-sm text-fg-muted">
+            {formatJarSize(product.jarWeightOz)} · {formatMoney(product.unitPrice)}
+            {product.unitPrice === 0 ? " — giveaway" : ""}
+            {product.active ? "" : " · hidden from new orders"}
+          </span>
+        </span>
+        <span className="shrink-0 text-sm font-semibold text-brand">Edit</span>
+      </button>
+    );
+  }
+
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2">
+    <form action={formAction} className="space-y-3">
       <input type="hidden" name="id" value={product.id} />
-      <input name="name" required className="field flex-1 sm:min-w-[16rem]" defaultValue={product.name} />
-      <input
-        name="price"
-        required
-        inputMode="decimal"
-        className="field w-24"
-        defaultValue={(product.unitPrice / 100).toFixed(2)}
-      />
-      <input name="unitLabel" className="field w-24" defaultValue={product.unitLabel} />
-      <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
-        <VarietyAndWeight
-          varieties={varieties}
-          varietyId={product.varietyId}
-          jarWeightOz={product.jarWeightOz}
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="What to call it" className="sm:col-span-2">
+          <input name="name" required className="field" defaultValue={product.name} autoFocus />
+        </Field>
+        <VarietyField varieties={varieties} varietyId={product.varietyId} />
+        <JarSizeField jarWeightOz={product.jarWeightOz} />
+        <PriceField unitPrice={product.unitPrice} />
+        <Field label="Called a" hint="Shows on orders: jar, tub, bag…">
+          <input name="unitLabel" className="field" defaultValue={product.unitLabel} />
+        </Field>
       </div>
+
       <label className="flex items-center gap-2 text-sm text-fg-muted">
-        <input type="checkbox" name="active" defaultChecked={product.active} className="h-4 w-4 accent-brand" />
-        Active
+        <input
+          type="checkbox"
+          name="active"
+          defaultChecked={product.active}
+          className="h-4 w-4 accent-brand"
+        />
+        Offer this size on new orders
       </label>
-      <Submit label="Save" variant="secondary" />
-      {state.error ? <span className="text-sm text-danger">{state.error}</span> : null}
+
+      {state.error ? (
+        <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
+          {state.error}
+        </p>
+      ) : null}
+
+      <div className="flex gap-2">
+        <Submit label="Save" />
+        <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

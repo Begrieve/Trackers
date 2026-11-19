@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatPounds, formatWeight, jarsFrom, parseWeight, weightOfJars } from "./weight";
+import { formatJarSize, formatPounds, formatWeight, jarsFrom, OZ_PER_LB, parseJarWeight, parseWeight, weightOfJars } from "./weight";
 
 test("a whole number of pounds reads as pounds", () => {
   assert.equal(formatWeight(608), "38 lb");
@@ -61,4 +61,36 @@ test("a jar with no weight set cannot be filled an infinite number of times", ()
 test("pounds-only display stays short", () => {
   assert.equal(formatPounds(608), "38 lb");
   assert.equal(formatPounds(616), "38.5 lb");
+});
+
+test("a bare number in the jar box is ounces, not pounds", () => {
+  assert.equal(parseJarWeight("11"), 11);
+  assert.equal(parseJarWeight("16"), 16);
+  assert.equal(parseJarWeight(" 32 "), 32);
+});
+
+test("the jar box honours a unit when one is spelled out", () => {
+  assert.equal(parseJarWeight("11 oz"), 11);
+  assert.equal(parseJarWeight("1 lb"), 16);
+  assert.equal(parseJarWeight("1 lb 2 oz"), 18);
+});
+
+test("a jar has to hold something", () => {
+  assert.throws(() => parseJarWeight(""));
+  assert.throws(() => parseJarWeight("0"));
+  assert.throws(() => parseJarWeight("0 oz"));
+  assert.throws(() => parseJarWeight("small"));
+  assert.throws(() => parseJarWeight("300 ml"));
+});
+
+test("an 11 oz jar fills from a batch like any other size", () => {
+  const spare = 19 * OZ_PER_LB; // 304 oz
+  assert.equal(jarsFrom(spare, 11), 27, "27 whole sample jars, and 7 oz left over");
+  assert.equal(weightOfJars(27, 11), 297);
+});
+
+test("a jar size keeps its ounces instead of becoming pounds", () => {
+  assert.equal(formatJarSize(11), "11 oz");
+  assert.equal(formatJarSize(16), "16 oz");
+  assert.equal(formatJarSize(32), "32 oz", "nobody asks for a 2 lb jar");
 });

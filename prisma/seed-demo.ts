@@ -49,11 +49,12 @@ export async function seedDemo(demoUrl: string, password: string, name = "Demo")
       [
         { name: "Napa cabbage kimchi — 32 oz", unitPrice: 2500, jarWeightOz: 32, varietyId: napaVariety.id },
         { name: "Napa cabbage kimchi — 16 oz", unitPrice: 1500, jarWeightOz: 16, varietyId: napaVariety.id },
+        { name: "Napa cabbage kimchi — 300 mL sample (11 oz)", unitPrice: 0, jarWeightOz: 11, varietyId: napaVariety.id },
         { name: "Cucumber kimchi (oi sobagi) — 16 oz", unitPrice: 1600, jarWeightOz: 16, varietyId: cucumberVariety.id },
         { name: "Radish kimchi (kkakdugi) — 16 oz", unitPrice: 1600, jarWeightOz: 16, varietyId: radishVariety.id },
       ].map((p) => db.product.create({ data: { ...p, unitLabel: "jar" } })),
     );
-    const [napa32, napa16, cucumber, radish] = products;
+    const [napa32, napa16, , cucumber, radish] = products;
 
     const people = await Promise.all(
       [
