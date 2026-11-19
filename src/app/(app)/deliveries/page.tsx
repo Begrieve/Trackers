@@ -176,17 +176,34 @@ export default async function DeliveriesPage() {
         )}
       </section>
 
-      {toHandOver.length > 0 ? (
-        <section className="print-block">
-          <SectionHeading
-            title="Samples and gifts to hand over"
-            subtitle={`${handOverJars} ${handOverJars === 1 ? "jar" : "jars"} already set aside, no money to collect`}
-            action={
-              <Link href="/set-aside" className="no-print text-sm font-semibold text-brand hover:underline">
-                Edit →
-              </Link>
-            }
-          />
+      <section className="print-block">
+        <SectionHeading
+          title="Samples and gifts to hand over"
+          subtitle={
+            toHandOver.length > 0
+              ? `${handOverJars} ${handOverJars === 1 ? "jar" : "jars"} already set aside, no money to collect`
+              : "Jars promised to someone but not yet handed over"
+          }
+          action={
+            <Link href="/set-aside" className="no-print text-sm font-semibold text-brand hover:underline">
+              {toHandOver.length > 0 ? "Edit →" : "Out without money →"}
+            </Link>
+          }
+        />
+        {toHandOver.length === 0 ? (
+          <EmptyState>
+            Nothing waiting. A sample lands here when you tick{" "}
+            <strong className="font-semibold text-fg">
+              I still have to hand these over
+            </strong>{" "}
+            while recording it — on the dashboard, or on a batch. Already recorded it as
+            gone?{" "}
+            <Link href="/set-aside" className="font-semibold text-danger underline">
+              Open it on Out without money
+            </Link>{" "}
+            and tick the same box.
+          </EmptyState>
+        ) : (
           <ul className="space-y-3">
             {toHandOver.map((a) => (
               <li key={a.id} className="card p-4">
@@ -243,8 +260,8 @@ export default async function DeliveriesPage() {
               </li>
             ))}
           </ul>
-        </section>
-      ) : null}
+        )}
+      </section>
 
       <section className="print-block">
         <SectionHeading

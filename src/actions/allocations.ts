@@ -9,6 +9,25 @@ import { jarsFrom } from "@/lib/weight";
 import { fromDateInputValue } from "@/lib/money";
 import type { ActionState } from "./customers";
 
+type Db = Awaited<ReturnType<typeof getDb>>;
+
+/**
+ * Resolve the person box to an id, adding them if the name is new.
+ *
+ * Someone you hand a sample to is often not in the ledger yet, and stopping
+ * to add them first is exactly the friction that leaves the field empty.
+ */
+async function personByName(db: Db, raw: string): Promise<string | null> {
+  const name = raw.trim();
+  if (!name) return null;
+  const existing = await db.customer.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+  });
+  if (existing) return existing.id;
+  const created = await db.customer.create({ data: { name } });
+  return created.id;
+}
+
 function revalidateAll(batchId: string) {
   revalidatePath("/set-aside");
   revalidatePath("/");
@@ -60,6 +79,9 @@ export async function allocateJars(_prev: ActionState, formData: FormData): Prom
   });
   if (valid.length === 0) return { error: "This batch did not make that kimchi." };
 
+  const customerId = await personByName(db, String(formData.get("person") ?? ""));
+  const wentOutOn = formData.get("pending") === "on" ? null : new Date();
+
   await db.batchAllocation.createMany({
     data: valid.map((line) => {
       const product = byId.get(line.productId)!;
@@ -71,8 +93,8 @@ export async function allocateJars(_prev: ActionState, formData: FormData): Prom
         varietyId: product.varietyId,
         jarWeightOz: product.jarWeightOz,
         kind: kindRaw,
-        customerId: String(formData.get("customerId") ?? "").trim() || null,
-        wentOutOn: formData.get("pending") === "on" ? null : new Date(),
+        customerId,
+        wentOutOn,
         note: String(formData.get("note") ?? "").trim() || null,
       };
     }),
@@ -148,7 +170,7 @@ export async function updateAllocation(
     }
   }
 
-  const customerId = String(formData.get("customerId") ?? "").trim() || null;
+  const customerId = await personByName(db, String(formData.get("person") ?? ""));
 
   await db.batchAllocation.update({
     where: { id },
@@ -219,7 +241,7 @@ export async function setAsideFromStock(
   const kindRaw = String(formData.get("kind") ?? "");
   const wanted = Number(String(formData.get("quantity") ?? "0"));
   const note = String(formData.get("note") ?? "").trim() || null;
-  const customerId = String(formData.get("customerId") ?? "").trim() || null;
+  const customerId = await personByName(db, String(formData.get("person") ?? ""));
   // Unticked means it is already out of your hands, which is the common case.
   const wentOutOn = formData.get("pending") === "on" ? null : new Date();
 
