@@ -141,10 +141,13 @@ panel opens a page listing every entry, newest first, and each one opens for edi
 **who got it**, which day it went, whether it was kept or given or shipped or lost,
 how many, and what it was for.
 
-Naming a person is optional, because a jar kept for the household went to nobody. When
-there is a name, it links to the ledger you already keep, so that person's page shows
-what they were given alongside what they bought — and deleting them clears the link
-rather than erasing the gift.
+Naming a person is optional, because a jar kept for the household went to nobody. The
+box takes a name you type as readily as one you pick: the person you hand a sample to
+is often not a customer yet — rather the point of a sample — and a new name is added to
+**People** on the spot rather than sending you off to create them first. Either way it
+links to the ledger you already keep, so that person's page shows what they were given
+alongside what they bought, and deleting them clears the link rather than erasing the
+gift.
 
 The day matters for more than the record: a jar is counted in the period it **left**,
 not the period its batch was cooked, so a July giveaway from an April cook is July's,

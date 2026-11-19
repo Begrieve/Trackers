@@ -127,7 +127,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {batch.yields.length > 0 ? (
-        <AllocateJars batchId={batch.id} rows={allocatable} />
+        <AllocateJars batchId={batch.id} rows={allocatable} people={people} />
       ) : null}
 
       <section className="card p-4">

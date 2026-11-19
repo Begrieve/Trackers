@@ -13,6 +13,7 @@ import {
 import { formatDate, toDateInputValue } from "@/lib/money";
 import { formatWeight } from "@/lib/weight";
 import type { ActionState } from "@/actions/customers";
+import { PersonField, type PersonOption } from "@/components/person-field";
 
 export type AllocationEntry = {
   id: string;
@@ -28,8 +29,6 @@ export type AllocationEntry = {
   batchId: string;
   batchCode: string;
 };
-
-export type PersonOption = { id: string; name: string };
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -91,7 +90,11 @@ export function AllocationEntryRow({
           <p className="truncate text-xs text-fg-muted">
             {ALLOCATION_LABEL[entry.kind]} ·{" "}
             {formatWeight(entry.quantity * entry.jarWeightOz)} ·{" "}
-            {formatDate(entry.wentOutOn)}
+            {entry.wentOutOn ? (
+              formatDate(entry.wentOutOn)
+            ) : (
+              <span className="font-semibold text-warn-fg">still to hand over</span>
+            )}
             {showBatch ? ` · ${entry.batchCode}` : ""}
             {entry.note ? ` · ${entry.note}` : ""}
           </p>
@@ -161,22 +164,23 @@ export function AllocationEntryRow({
               defaultValue={toDateInputValue(entry.wentOutOn)}
             />
           </label>
-          <label className="block min-w-0">
-            <span className="label">Who got it</span>
-            <select
-              name="customerId"
-              className="field"
-              defaultValue={entry.customerId ?? ""}
-            >
-              <option value="">Nobody in particular</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <PersonField
+          people={people}
+          id={`person-${entry.id}`}
+          defaultValue={entry.customerName ?? ""}
+          hint="Type a new name and they're added to People."
+        />
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-fg-muted">
+          <input
+            type="checkbox"
+            name="pending"
+            defaultChecked={entry.wentOutOn === null}
+            className="h-4 w-4 accent-brand"
+          />
+          Still to hand over — keep it on the delivery run
+        </label>
 
         <label className="block">
           <span className="label">What it was for</span>

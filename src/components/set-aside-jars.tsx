@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { setAsideFromStock } from "@/actions/allocations";
 import type { ActionState } from "@/actions/customers";
+import { PersonField, type PersonOption } from "@/components/person-field";
 import { ALLOCATION_KINDS, type AllocationKindValue } from "@/lib/allocations";
 
 function Submit({ count }: { count: number }) {
@@ -24,8 +25,6 @@ export type ShelfRow = { productId: string; name: string; spare: number };
  * Only products with jars on the shelf are offered, so the form can't ask for
  * something that isn't there.
  */
-export type PersonOption = { id: string; name: string };
-
 export function SetAsideJars({ rows, people = [] }: { rows: ShelfRow[]; people?: PersonOption[] }) {
   const onShelf = rows.filter((r) => r.spare > 0);
 
@@ -156,21 +155,7 @@ export function SetAsideJars({ rows, people = [] }: { rows: ShelfRow[]; people?:
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {people.length > 0 ? (
-          <div className="min-w-0">
-            <label className="label" htmlFor="setaside-person">
-              Who got it (optional)
-            </label>
-            <select id="setaside-person" name="customerId" className="field" defaultValue="">
-              <option value="">Nobody in particular</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
+        <PersonField people={people} id="setaside-person" />
         <div className="min-w-0">
           <label className="label" htmlFor="setaside-note">
             What it was for (optional)

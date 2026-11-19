@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { allocateJars } from "@/actions/allocations";
 import type { ActionState } from "@/actions/customers";
 import { ALLOCATION_KINDS, type AllocationKindValue } from "@/lib/allocations";
+import { PersonField, type PersonOption } from "@/components/person-field";
 
 function Submit({ total, label }: { total: number; label: string }) {
   const { pending } = useFormStatus();
@@ -21,7 +22,15 @@ export type Allocatable = { productId: string; name: string; remaining: number }
  * Set jars aside from a batch without selling them. Remaining counts are
  * per product, so "all of it" means every jar the batch still holds.
  */
-export function AllocateJars({ batchId, rows }: { batchId: string; rows: Allocatable[] }) {
+export function AllocateJars({
+  batchId,
+  rows,
+  people = [],
+}: {
+  batchId: string;
+  rows: Allocatable[];
+  people?: PersonOption[];
+}) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<AllocationKindValue>("KEPT");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -146,17 +155,25 @@ export function AllocateJars({ batchId, rows }: { batchId: string; rows: Allocat
         Take the whole batch
       </button>
 
-      <div>
-        <label className="label" htmlFor="allocation-note">
-          Note (optional)
-        </label>
-        <input
-          id="allocation-note"
-          name="note"
-          className="field"
-          placeholder="Church fundraiser, sent to Mum, dropped a jar…"
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <PersonField people={people} id="allocation-person" />
+        <div className="min-w-0">
+          <label className="label" htmlFor="allocation-note">
+            What it was for (optional)
+          </label>
+          <input
+            id="allocation-note"
+            name="note"
+            className="field"
+            placeholder="Church fundraiser, sent to Mum, dropped a jar…"
+          />
+        </div>
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-fg-muted">
+        <input type="checkbox" name="pending" className="h-4 w-4 accent-brand" />
+        I still have to hand these over — put them on the delivery run
+      </label>
 
       {state.error ? (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
